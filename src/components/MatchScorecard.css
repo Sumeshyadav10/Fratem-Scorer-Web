@@ -1,0 +1,458 @@
+/* Match Scorecard Component Styles */
+
+.match-scorecard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+/* Match Header */
+.match-header {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.match-title h1 {
+  margin: 0 0 15px 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.match-details {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.match-details span {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+}
+
+.toss-info {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px;
+  border-radius: 10px;
+}
+
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+  background: white;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.tab-button {
+  background: transparent;
+  border: none;
+  padding: 15px 30px;
+  margin: 0 5px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  color: #6c757d;
+}
+
+.tab-button:hover:not(:disabled) {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.tab-button.active {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.tab-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Content Area */
+.content-area {
+  margin-bottom: 30px;
+}
+
+.summary-view {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Batting Card */
+.batting-card {
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+}
+
+.card-header {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  padding: 25px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.score-summary {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 1.2rem;
+}
+
+.score-summary .score {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.score-summary .overs,
+.score-summary .run-rate {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 5px 12px;
+  border-radius: 15px;
+  font-weight: 600;
+}
+
+/* Tables */
+.batting-table,
+.bowling-table {
+  overflow-x: auto;
+}
+
+.batting-table table,
+.bowling-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.batting-table th,
+.bowling-table th,
+.batting-table td,
+.bowling-table td {
+  padding: 15px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.batting-table th,
+.bowling-table th {
+  background: #f8f9fa;
+  font-weight: 700;
+  color: #495057;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.batting-table tbody tr:hover,
+.bowling-table tbody tr:hover {
+  background: #f8f9fa;
+  transition: background-color 0.2s ease;
+}
+
+.player-name {
+  font-weight: 600;
+  color: #2d3748;
+  min-width: 180px;
+}
+
+.batting-position,
+.bowling-position {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-left: 5px;
+}
+
+.runs, .balls, .fours, .sixes {
+  font-weight: 600;
+  text-align: center;
+}
+
+.strike-rate, .economy {
+  text-align: center;
+  color: #007bff;
+  font-weight: 600;
+}
+
+.status {
+  text-align: center;
+  font-weight: 600;
+}
+
+.out .status {
+  color: #dc3545;
+}
+
+.not-out .status {
+  color: #28a745;
+}
+
+.extras-row {
+  background: #f8f9fa;
+  font-style: italic;
+}
+
+.extras-label {
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.extras-value {
+  text-align: center;
+  font-weight: 700;
+}
+
+.total-row {
+  background: linear-gradient(135deg, #e9ecef, #dee2e6);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* Bowling Card */
+.bowling-card {
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.bowling-card .card-header {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+.overs, .maidens, .wickets, .wides, .no-balls {
+  text-align: center;
+  font-weight: 600;
+}
+
+.wickets {
+  color: #dc3545;
+}
+
+/* Target Info */
+.target-info {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  color: #212529;
+  padding: 15px 30px;
+  margin: 0;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Error and Loading States */
+.error-container,
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.error-message {
+  background: white;
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 8px 32px rgba(220, 53, 69, 0.1);
+  border-left: 5px solid #dc3545;
+}
+
+.error-message h2 {
+  color: #dc3545;
+  margin-bottom: 15px;
+}
+
+.retry-button {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 20px;
+  transition: all 0.3s ease;
+}
+
+.retry-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #e9ecef;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Refresh Controls */
+.refresh-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 20px 30px;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.refresh-button {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.refresh-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+}
+
+.last-updated {
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .match-scorecard {
+    padding: 10px;
+  }
+  
+  .match-header {
+    padding: 20px 15px;
+  }
+  
+  .match-title h1 {
+    font-size: 2rem;
+  }
+  
+  .match-details {
+    gap: 15px;
+  }
+  
+  .tab-navigation {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+  
+  .batting-table,
+  .bowling-table {
+    font-size: 0.85rem;
+  }
+  
+  .batting-table th,
+  .bowling-table th,
+  .batting-table td,
+  .bowling-table td {
+    padding: 10px 8px;
+  }
+  
+  .player-name {
+    min-width: 120px;
+  }
+  
+  .refresh-controls {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .match-title h1 {
+    font-size: 1.5rem;
+  }
+  
+  .batting-table,
+  .bowling-table {
+    font-size: 0.8rem;
+  }
+  
+  .score-summary {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .tab-button {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .match-scorecard {
+    background: white;
+    padding: 0;
+  }
+  
+  .tab-navigation,
+  .refresh-controls {
+    display: none;
+  }
+  
+  .batting-card,
+  .bowling-card {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}

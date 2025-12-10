@@ -13,7 +13,7 @@ function LiveScoring({ matchId: propMatchId, token, userType, onBack }) {
 
   // Fresh tokens (expires Nov 12, 2025)
   const organizerToken =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGUxMTRkYWFkNzU3OTlkNTdkMThiMGUiLCJ1c2VyVHlwZSI6Im9yZ2FuaXplciIsImlhdCI6MTc2MjMyOTEyOSwiZXhwIjoxNzYyOTMzOTI5fQ.muY4WfecXeNnjR3R7CNwwyfwE0OJilgm6mAaeAyy64A";
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGUxMTRkYWFkNzU3OTlkNTdkMThiMGUiLCJ1c2VyVHlwZSI6Im9yZ2FuaXplciIsImFjdGl2ZVJvbGUiOiJ0b3VybmFtZW50LW9yZ2FuaXplciIsImlhdCI6MTc2NTE3NDE1MCwiZXhwIjoxNzY1Nzc4OTUwfQ.uVNyAlaql9cXB35iLhO6Rgs8v-t7amgZr-HPz4oGi5A";
   const playerToken =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGYwYmE2MTYyZmM5NzkxOGMyZGQ5ODYiLCJ1c2VyVHlwZSI6InBsYXllciIsImlhdCI6MTc2MjMyOTEyOSwiZXhwIjoxNzYyOTMzOTI5fQ.jDZspQPmhvL7F0Dljz8w6Pv4nCjsjrrq2nCtvXEQSdU";
 

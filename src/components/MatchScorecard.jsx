@@ -245,6 +245,26 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
         </h1>
         <div className="match-details">
           <span className="match-type">{matchInfo.matchType}</span>
+          {matchInfo.matchFormat && (
+            <span
+              className="match-format"
+              style={{
+                background: "#007bff",
+                color: "white",
+                padding: "2px 8px",
+                borderRadius: "4px",
+                fontSize: "12px",
+              }}
+            >
+              {matchInfo.matchFormat === "overarm"
+                ? "⚾ Overarm"
+                : matchInfo.matchFormat === "leather-ball"
+                ? "🏏 Leather Ball"
+                : matchInfo.matchFormat === "underarm"
+                ? "🥎 Underarm"
+                : matchInfo.matchFormat}
+            </span>
+          )}
           <span className="venue">
             {matchInfo.venue?.ground}, {matchInfo.venue?.city}
           </span>

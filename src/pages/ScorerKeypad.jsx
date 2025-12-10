@@ -9,6 +9,7 @@ const PlayerSelectionForm = ({
   availableBowlers,
   match,
   onPlayersSelected,
+  autoPopulateTeams = false, // New prop for second innings
 }) => {
   const [selectedBattingTeam, setSelectedBattingTeam] = useState("");
   const [selectedBowlingTeam, setSelectedBowlingTeam] = useState("");
@@ -16,12 +17,33 @@ const PlayerSelectionForm = ({
   const [selectedNonStriker, setSelectedNonStriker] = useState("");
   const [selectedBowler, setSelectedBowler] = useState("");
 
+  // Auto-populate teams for second innings
+  useEffect(() => {
+    if (autoPopulateTeams && match?.currentState) {
+      const battingTeamId = match.currentState.battingTeam?.teamId;
+      const bowlingTeamId = match.currentState.bowlingTeam?.teamId;
+
+      if (battingTeamId && bowlingTeamId) {
+        setSelectedBattingTeam(battingTeamId);
+        setSelectedBowlingTeam(bowlingTeamId);
+      }
+    }
+  }, [autoPopulateTeams, match]);
+
   // Get players from selected teams (only playing XI from lineups)
   const getBattingTeamPlayers = () => {
     if (!selectedBattingTeam || !match) return [];
 
+    const playersPerTeam = match.playersPerTeam || 11; // Use match-specific player count
+
     if (selectedBattingTeam === match.teams.team1.teamId) {
-      // Use batting order for batting team players, fallback to all players if no lineup set
+      // First check if selectedPlayers exists (lineup has been set)
+      const selectedPlayers = match.teams.team1.selectedPlayers;
+      if (selectedPlayers && selectedPlayers.length > 0) {
+        return selectedPlayers;
+      }
+
+      // Fallback: Use batting order for batting team players
       const battingOrder = match.teams.team1.battingOrder;
       if (battingOrder && battingOrder.length > 0) {
         return battingOrder.map((orderPlayer) => {
@@ -31,9 +53,15 @@ const PlayerSelectionForm = ({
           return fullPlayer || orderPlayer;
         });
       }
-      return match.teams.team1.players.slice(0, 11) || [];
+      return match.teams.team1.players.slice(0, playersPerTeam) || [];
     } else {
-      // Use batting order for team2, fallback to all players if no lineup set
+      // First check if selectedPlayers exists (lineup has been set)
+      const selectedPlayers = match.teams.team2.selectedPlayers;
+      if (selectedPlayers && selectedPlayers.length > 0) {
+        return selectedPlayers;
+      }
+
+      // Fallback: Use batting order for team2
       const battingOrder = match.teams.team2.battingOrder;
       if (battingOrder && battingOrder.length > 0) {
         return battingOrder.map((orderPlayer) => {
@@ -43,7 +71,7 @@ const PlayerSelectionForm = ({
           return fullPlayer || orderPlayer;
         });
       }
-      return match.teams.team2.players.slice(0, 11) || [];
+      return match.teams.team2.players.slice(0, playersPerTeam) || [];
     }
   };
 
@@ -51,7 +79,13 @@ const PlayerSelectionForm = ({
     if (!selectedBowlingTeam || !match) return [];
 
     if (selectedBowlingTeam === match.teams.team1.teamId) {
-      // Use bowling order for bowling team players, fallback to all players if no lineup set
+      // First check if selectedPlayers exists (lineup has been set) - show ALL selected players
+      const selectedPlayers = match.teams.team1.selectedPlayers;
+      if (selectedPlayers && selectedPlayers.length > 0) {
+        return selectedPlayers; // Return all selected players, not limited to 5
+      }
+
+      // Fallback: Use bowling order for bowling team players
       const bowlingOrder = match.teams.team1.bowlingOrder;
       if (bowlingOrder && bowlingOrder.length > 0) {
         return bowlingOrder.map((orderPlayer) => {
@@ -61,9 +95,16 @@ const PlayerSelectionForm = ({
           return fullPlayer || orderPlayer;
         });
       }
-      return match.teams.team1.players.slice(0, 5) || [];
+      // Return all players from the team (no limit)
+      return match.teams.team1.players || [];
     } else {
-      // Use bowling order for team2, fallback to all players if no lineup set
+      // First check if selectedPlayers exists (lineup has been set) - show ALL selected players
+      const selectedPlayers = match.teams.team2.selectedPlayers;
+      if (selectedPlayers && selectedPlayers.length > 0) {
+        return selectedPlayers; // Return all selected players, not limited to 5
+      }
+
+      // Fallback: Use bowling order for team2
       const bowlingOrder = match.teams.team2.bowlingOrder;
       if (bowlingOrder && bowlingOrder.length > 0) {
         return bowlingOrder.map((orderPlayer) => {
@@ -73,7 +114,8 @@ const PlayerSelectionForm = ({
           return fullPlayer || orderPlayer;
         });
       }
-      return match.teams.team2.players.slice(0, 5) || [];
+      // Return all players from the team (no limit)
+      return match.teams.team2.players || [];
     }
   };
 
@@ -146,75 +188,108 @@ const PlayerSelectionForm = ({
 
   return (
     <div>
-      {/* Team Selection */}
-      <div
-        style={{
-          marginBottom: 30,
-          padding: 20,
-          background: "#fff3cd",
-          borderRadius: 5,
-        }}
-      >
-        <h4>🏏 Select Teams</h4>
+      {/* Team Selection - Hide if auto-populated */}
+      {!autoPopulateTeams && (
         <div
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
+          style={{
+            marginBottom: 30,
+            padding: 20,
+            background: "#fff3cd",
+            borderRadius: 5,
+          }}
         >
-          <div>
-            <label
-              style={{ display: "block", marginBottom: 10, fontWeight: "bold" }}
-            >
-              Batting Team
-            </label>
-            <select
-              value={selectedBattingTeam}
-              onChange={(e) => handleBattingTeamChange(e.target.value)}
-              style={{
-                width: "100%",
-                padding: 12,
-                borderRadius: 4,
-                border: "1px solid #ccc",
-                fontSize: 16,
-              }}
-            >
-              <option value="">-- Select Batting Team --</option>
-              <option value={match.teams.team1.teamId}>
-                {match.teams.team1.teamName}
-              </option>
-              <option value={match.teams.team2.teamId}>
-                {match.teams.team2.teamName}
-              </option>
-            </select>
-          </div>
+          <h4>🏏 Select Teams</h4>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
+          >
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 10,
+                  fontWeight: "bold",
+                }}
+              >
+                Batting Team
+              </label>
+              <select
+                value={selectedBattingTeam}
+                onChange={(e) => handleBattingTeamChange(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  fontSize: 16,
+                }}
+              >
+                <option value="">-- Select Batting Team --</option>
+                <option value={match.teams.team1.teamId}>
+                  {match.teams.team1.teamName}
+                </option>
+                <option value={match.teams.team2.teamId}>
+                  {match.teams.team2.teamName}
+                </option>
+              </select>
+            </div>
 
-          <div>
-            <label
-              style={{ display: "block", marginBottom: 10, fontWeight: "bold" }}
-            >
-              Bowling Team
-            </label>
-            <select
-              value={selectedBowlingTeam}
-              disabled={true} // Auto-selected based on batting team
-              style={{
-                width: "100%",
-                padding: 12,
-                borderRadius: 4,
-                border: "1px solid #ccc",
-                fontSize: 16,
-                background: "#f8f9fa",
-              }}
-            >
-              <option value="">-- Auto Selected --</option>
-              <option value={match.teams.team1.teamId}>
-                {match.teams.team1.teamName}
-              </option>
-              <option value={match.teams.team2.teamId}>
-                {match.teams.team2.teamName}
-              </option>
-            </select>
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 10,
+                  fontWeight: "bold",
+                }}
+              >
+                Bowling Team
+              </label>
+              <select
+                value={selectedBowlingTeam}
+                disabled={true} // Auto-selected based on batting team
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  fontSize: 16,
+                  background: "#f8f9fa",
+                }}
+              >
+                <option value="">-- Auto Selected --</option>
+                <option value={match.teams.team1.teamId}>
+                  {match.teams.team1.teamName}
+                </option>
+                <option value={match.teams.team2.teamId}>
+                  {match.teams.team2.teamName}
+                </option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Show team info for second innings */}
+      {autoPopulateTeams && selectedBattingTeam && selectedBowlingTeam && (
+        <div
+          style={{
+            marginBottom: 20,
+            padding: 15,
+            background: "#d1ecf1",
+            border: "1px solid #bee5eb",
+            borderRadius: 5,
+          }}
+        >
+          <h4 style={{ margin: "0 0 10px 0" }}>
+            🔄 Second Innings - Teams Swapped
+          </h4>
+          <p style={{ margin: "5px 0" }}>
+            <strong>Batting:</strong> {getBattingTeamName()}
+          </p>
+          <p style={{ margin: "5px 0" }}>
+            <strong>Bowling:</strong> {getBowlingTeamName()}
+          </p>
+        </div>
+      )}
 
       {/* Player Selection - Only show if teams are selected */}
       {selectedBattingTeam && selectedBowlingTeam && (
@@ -233,9 +308,10 @@ const PlayerSelectionForm = ({
             }}
           >
             <strong>ℹ️ Playing XI Selection:</strong> Showing only players from
-            team lineups -{getBattingTeamName()}:{" "}
-            {(battingTeamPlayers || []).length} batsmen,
-            {getBowlingTeamName()}: {(bowlingTeamPlayers || []).length} bowlers
+            team lineups - {getBattingTeamName()}:{" "}
+            {(battingTeamPlayers || []).length}/{match.playersPerTeam || 11}{" "}
+            batsmen, {getBowlingTeamName()}: {(bowlingTeamPlayers || []).length}
+            /{Math.min(5, match.playersPerTeam || 11)} bowlers
           </div>
 
           <div
@@ -428,6 +504,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
   const [showNewBowlerSelection, setShowNewBowlerSelection] = useState(false);
   const [showRunOutSelection, setShowRunOutSelection] = useState(false);
   const [showFielderSelection, setShowFielderSelection] = useState(false);
+  const [showLastBallConfirmation, setShowLastBallConfirmation] =
+    useState(false);
+  const [pendingLastBall, setPendingLastBall] = useState(null);
   const [outBatsman, setOutBatsman] = useState(null);
   const [pendingBallData, setPendingBallData] = useState(null);
   const [wicketBallData, setWicketBallData] = useState(null); // Store ball data for wicket scenarios
@@ -600,7 +679,13 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
 
   const startSecondInnings = async () => {
     try {
-      console.log("🏏 Starting second innings...");
+      console.log("🏏 Starting second innings with target:", targetScore);
+
+      // Calculate target if not already set (score + 1)
+      const calculatedTarget =
+        targetScore > 0 ? targetScore : (score?.runs || 0) + 1;
+
+      console.log("🎯 Calculated target:", calculatedTarget);
 
       // API call to start second innings
       const response = await fetch(
@@ -613,7 +698,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           },
           body: JSON.stringify({
             newInnings: 2,
-            targetScore: targetScore,
+            targetScore: calculatedTarget,
           }),
         }
       );
@@ -679,19 +764,17 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
 
     const team1Name = match.teams?.team1?.teamName || "Team 1";
     const team2Name = match.teams?.team2?.teamName || "Team 2";
+    const maxOvers = match.overs || 20;
+    const maxBalls = maxOvers * 6;
+    const playersPerTeam = match.playersPerTeam || 11;
 
-    // Determine which team batted first and second
-    const firstInningsTeam =
-      match.currentState?.innings === 2
-        ? match.currentState?.battingTeam?.teamId === match.teams?.team1?.teamId
-          ? team2Name
-          : team1Name
-        : match.currentState?.battingTeam?.teamId === match.teams?.team1?.teamId
-        ? team1Name
-        : team2Name;
+    // Determine which team batted first and second based on currentState
+    const currentBattingTeamId = match.currentState?.battingTeam?.teamId;
+    const isTeam1Batting = currentBattingTeamId === match.teams?.team1?.teamId;
 
-    const secondInningsTeam =
-      firstInningsTeam === team1Name ? team2Name : team1Name;
+    const secondInningsTeam = isTeam1Batting ? team1Name : team2Name;
+    const firstInningsTeam = isTeam1Batting ? team2Name : team1Name;
+
     const chasingTeamRuns = finalScore.runs || 0;
     const chasingTeamWickets = finalScore.wickets || 0;
     const ballsFaced = finalScore.balls || 0;
@@ -700,7 +783,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
     // Check for tie
     if (
       chasingTeamRuns === target - 1 &&
-      (ballsFaced >= 120 || chasingTeamWickets >= 10)
+      (ballsFaced >= maxBalls || chasingTeamWickets >= playersPerTeam)
     ) {
       return {
         winner: "TIE",
@@ -711,10 +794,10 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       };
     }
 
-    // Check if chasing team won
+    // Check if chasing team won (target achieved)
     if (chasingTeamRuns >= target) {
-      const wicketsRemaining = 10 - chasingTeamWickets;
-      const ballsRemaining = 120 - ballsFaced;
+      const wicketsRemaining = playersPerTeam - chasingTeamWickets;
+      const ballsRemaining = maxBalls - ballsFaced;
       return {
         winner: secondInningsTeam,
         margin: `${wicketsRemaining} wickets`,
@@ -725,13 +808,13 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
     }
 
     // Check if chasing team was all out or completed their overs
-    const isAllOut = chasingTeamWickets >= 10;
-    const oversCompleted = ballsFaced >= 120;
+    const isAllOut = chasingTeamWickets >= playersPerTeam;
+    const oversCompleted = ballsFaced >= maxBalls;
 
     if (isAllOut || oversCompleted) {
-      // First innings team won
+      // First innings team won (defended target)
       const margin = target - chasingTeamRuns - 1;
-      const howLost = isAllOut ? "all out" : "completed their overs";
+      const howLost = isAllOut ? "all out" : `completed ${maxOvers} overs`;
 
       return {
         winner: firstInningsTeam,
@@ -1052,6 +1135,15 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         socketRef.current = null;
       }
 
+      // Log token info for debugging (without exposing full token)
+      console.log("🔑 Token Debug Info:", {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        tokenStart: token?.substring(0, 20) + "...",
+        tokenType: typeof token,
+        apiBaseUrl: API_BASE_URL,
+      });
+
       // Initialize Socket.IO connection
       const socketConnection = io(API_BASE_URL, {
         auth: {
@@ -1061,6 +1153,44 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionAttempts: 5,
+      });
+
+      // Handle connection errors (authentication, network, etc.)
+      socketConnection.on("connect_error", (error) => {
+        console.error("🚨 WebSocket Connection Error:", {
+          message: error.message,
+          description: error.description,
+          context: error.context,
+          type: error.type,
+          timestamp: new Date().toISOString(),
+        });
+
+        setIsConnected(false);
+        setStatus(`Connection failed: ${error.message}`);
+        setLiveUpdates((prev) => [
+          ...prev,
+          {
+            type: "error",
+            message: `❌ Connection error: ${error.message}`,
+            time: new Date(),
+          },
+        ]);
+
+        // If authentication fails, show specific message
+        if (error.message.includes("Authentication")) {
+          console.error(
+            "🔒 Authentication failed - Token may be invalid or expired"
+          );
+          setLiveUpdates((prev) => [
+            ...prev,
+            {
+              type: "error",
+              message:
+                "Authentication failed. Please refresh your login token.",
+              time: new Date(),
+            },
+          ]);
+        }
       });
 
       socketConnection.on("connect", () => {
@@ -1142,8 +1272,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           ]);
         }
 
-        // Refresh match data to get updated player statistics
-        refreshMatchData();
+        // No need to refresh - score_update already contains latest data
       });
 
       socketConnection.on("ball_event", (ballData) => {
@@ -1182,8 +1311,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           ball: prev.ball + 1,
         }));
 
-        // Refresh match data to get updated player statistics
-        refreshMatchData();
+        // No need to refresh - ball recording response already has updated stats
       });
 
       socketConnection.on("match_state_change", (data) => {
@@ -1228,8 +1356,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           },
         ]);
 
-        // Refresh match data to get updated player stats
-        refreshMatchData();
+        // No need to refresh - undo event contains reverted state
       });
 
       socketRef.current = socketConnection;
@@ -1643,6 +1770,12 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                       playerName: ballToRecord.fielder.playerName,
                     }
                   : null,
+                assistFielder: ballToRecord.assistantFielder
+                  ? {
+                      playerId: ballToRecord.assistantFielder.playerId,
+                      playerName: ballToRecord.assistantFielder.playerName,
+                    }
+                  : null,
               }
             : { isWicket: false },
 
@@ -1727,100 +1860,363 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         const responseData = await response.json();
         console.log("🏏 Ball recorded successfully! Response:", {
           success: responseData.success,
-          commentary: responseData.data?.commentary,
+          commentary: responseData.data?.ball?.commentary,
           strikeRotation: {
             oldStriker: ballData.batsman.playerName,
             newStriker:
-              responseData.data?.match?.currentState?.currentBatsmen?.striker
+              responseData.data?.currentState?.currentBatsmen?.striker
                 ?.playerName,
             rotated:
               ballData.batsman.playerId !==
-              responseData.data?.match?.currentState?.currentBatsmen?.striker
+              responseData.data?.currentState?.currentBatsmen?.striker
                 ?.playerId,
           },
           overInfo: {
-            ballsInOver: responseData.data?.currentScore?.balls % 6,
+            ballsInOver: responseData.data?.score?.balls % 6,
             wasLegalBall:
               ballData.ballType === "legal" ||
               ballData.ballType === "bye" ||
               ballData.ballType === "leg-bye",
             overCompleted:
-              responseData.data?.currentScore?.balls % 6 === 0 &&
+              responseData.data?.score?.balls % 6 === 0 &&
               (ballData.ballType === "legal" ||
                 ballData.ballType === "bye" ||
                 ballData.ballType === "leg-bye"),
           },
         });
 
-        // Update match state from the response
-        if (responseData.data && responseData.data.match) {
-          const updatedMatch = responseData.data.match;
+        // Update match state from the optimized response
+        if (responseData.data) {
+          const data = responseData.data;
 
-          // Debug: Log the actual player data being received
-          console.log("🔍 Backend returned match data:", {
+          // Debug: Log the optimized response structure
+          console.log("🔍 Backend returned optimized data:", {
             strikerInResponse: {
-              id: updatedMatch.currentState?.currentBatsmen?.striker?.playerId,
-              name: updatedMatch.currentState?.currentBatsmen?.striker
-                ?.playerName,
+              id: data.currentState?.currentBatsmen?.striker?.playerId,
+              name: data.currentState?.currentBatsmen?.striker?.playerName,
             },
             nonStrikerInResponse: {
-              id: updatedMatch.currentState?.currentBatsmen?.nonStriker
-                ?.playerId,
-              name: updatedMatch.currentState?.currentBatsmen?.nonStriker
-                ?.playerName,
+              id: data.currentState?.currentBatsmen?.nonStriker?.playerId,
+              name: data.currentState?.currentBatsmen?.nonStriker?.playerName,
             },
+            updatedPlayersCount: Object.keys(data.updatedPlayers || {}).filter(
+              (k) => data.updatedPlayers[k] !== null
+            ).length,
           });
 
-          setMatch(updatedMatch);
+          // Update match state incrementally (only changed parts)
+          setMatch((prevMatch) => {
+            const updatedMatch = { ...prevMatch };
+
+            // Update current state
+            if (data.currentState) {
+              updatedMatch.currentState = {
+                ...updatedMatch.currentState,
+                ...data.currentState,
+              };
+            }
+
+            // Update match status if match is completed
+            if (data.inningsStatus?.matchCompleted) {
+              updatedMatch.currentState = {
+                ...updatedMatch.currentState,
+                status: "completed",
+                result: data.inningsStatus.matchResult,
+              };
+              if (!updatedMatch.timing) {
+                updatedMatch.timing = {};
+              }
+              updatedMatch.timing.endTime = new Date();
+              updatedMatch.completedAt = new Date();
+            }
+
+            // Update only the affected players
+            if (data.updatedPlayers) {
+              console.log(
+                "🔄 Updating player stats from ball response:",
+                data.updatedPlayers
+              );
+
+              // Helper function to find and update player in either team
+              const updatePlayerInMatch = (playerId, playerData) => {
+                if (!playerId || !playerData) return;
+
+                // Try to find in team1
+                let playerIndex = updatedMatch.teams.team1.players.findIndex(
+                  (p) => p.playerId.toString() === playerId.toString()
+                );
+
+                if (playerIndex !== -1) {
+                  // Found in team1, update it
+                  console.log(
+                    `✅ Updating ${playerData.playerName} stats in team1:`,
+                    {
+                      batting: playerData.batting,
+                      bowling: playerData.bowling,
+                    }
+                  );
+                  updatedMatch.teams.team1.players[playerIndex] = {
+                    ...updatedMatch.teams.team1.players[playerIndex],
+                    ...playerData,
+                  };
+                } else {
+                  // Try to find in team2
+                  playerIndex = updatedMatch.teams.team2.players.findIndex(
+                    (p) => p.playerId.toString() === playerId.toString()
+                  );
+
+                  if (playerIndex !== -1) {
+                    // Found in team2, update it
+                    console.log(
+                      `✅ Updating ${playerData.playerName} stats in team2:`,
+                      {
+                        batting: playerData.batting,
+                        bowling: playerData.bowling,
+                      }
+                    );
+                    updatedMatch.teams.team2.players[playerIndex] = {
+                      ...updatedMatch.teams.team2.players[playerIndex],
+                      ...playerData,
+                    };
+                  } else {
+                    console.warn(
+                      `⚠️ Player ${playerData.playerName} (${playerId}) not found in either team!`
+                    );
+                  }
+                }
+              };
+
+              // Update striker
+              if (data.updatedPlayers.striker) {
+                updatePlayerInMatch(
+                  data.updatedPlayers.striker.playerId,
+                  data.updatedPlayers.striker
+                );
+              }
+
+              // Update non-striker
+              if (data.updatedPlayers.nonStriker) {
+                updatePlayerInMatch(
+                  data.updatedPlayers.nonStriker.playerId,
+                  data.updatedPlayers.nonStriker
+                );
+              }
+
+              // Update bowler
+              if (data.updatedPlayers.bowler) {
+                updatePlayerInMatch(
+                  data.updatedPlayers.bowler.playerId,
+                  data.updatedPlayers.bowler
+                );
+              }
+
+              // Update fielder if applicable
+              if (data.updatedPlayers.fielder) {
+                updatePlayerInMatch(
+                  data.updatedPlayers.fielder.playerId,
+                  data.updatedPlayers.fielder
+                );
+              }
+            }
+
+            // Update score in match object
+            if (data.score) {
+              const currentInnings = data.currentState?.currentInnings || 1;
+              if (currentInnings === 1) {
+                updatedMatch.score.innings1 = {
+                  ...updatedMatch.score.innings1,
+                  runs: data.score.runs,
+                  wickets: data.score.wickets,
+                  overs: data.score.overs,
+                  balls: data.score.balls,
+                  runRate: data.score.runRate,
+                  extras: data.score.extras,
+                };
+              } else {
+                updatedMatch.score.innings2 = {
+                  ...updatedMatch.score.innings2,
+                  runs: data.score.runs,
+                  wickets: data.score.wickets,
+                  overs: data.score.overs,
+                  balls: data.score.balls,
+                  runRate: data.score.runRate,
+                  extras: data.score.extras,
+                };
+              }
+            }
+
+            // Update partnerships
+            if (data.currentPartnership) {
+              const partnershipIndex = updatedMatch.partnerships?.findIndex(
+                (p) =>
+                  p.isActive && p.innings === data.currentState.currentInnings
+              );
+              if (partnershipIndex !== -1) {
+                updatedMatch.partnerships[partnershipIndex] =
+                  data.currentPartnership;
+              } else if (updatedMatch.partnerships) {
+                updatedMatch.partnerships.push(data.currentPartnership);
+              }
+            }
+
+            // Update fall of wickets
+            if (data.lastWicket) {
+              if (!updatedMatch.fallOfWickets) {
+                updatedMatch.fallOfWickets = [];
+              }
+              updatedMatch.fallOfWickets.push(data.lastWicket);
+            }
+
+            return updatedMatch;
+          });
 
           // Update current batsmen (important for strike rotation)
-          if (
-            updatedMatch.currentState &&
-            updatedMatch.currentState.currentBatsmen
-          ) {
+          if (data.currentState && data.currentState.currentBatsmen) {
             console.log("🔄 Updating batsmen from backend response:", {
               oldStriker:
                 match?.currentState?.currentBatsmen?.striker?.playerName,
               oldNonStriker:
                 match?.currentState?.currentBatsmen?.nonStriker?.playerName,
-              newStriker:
-                updatedMatch.currentState.currentBatsmen.striker?.playerName,
+              newStriker: data.currentState.currentBatsmen.striker?.playerName,
               newNonStriker:
-                updatedMatch.currentState.currentBatsmen.nonStriker?.playerName,
+                data.currentState.currentBatsmen.nonStriker?.playerName,
               rotationHappened:
                 match?.currentState?.currentBatsmen?.striker?.playerId !==
-                updatedMatch.currentState.currentBatsmen.striker?.playerId,
+                data.currentState.currentBatsmen.striker?.playerId,
             });
 
-            setCurrentStriker(updatedMatch.currentState.currentBatsmen.striker);
-            setCurrentNonStriker(
-              updatedMatch.currentState.currentBatsmen.nonStriker
-            );
+            setCurrentStriker(data.currentState.currentBatsmen.striker);
+            setCurrentNonStriker(data.currentState.currentBatsmen.nonStriker);
 
             // Update current bowler if available
-            if (updatedMatch.currentState.currentBowler) {
-              setCurrentBowler(updatedMatch.currentState.currentBowler);
+            if (data.currentState.currentBowler) {
+              setCurrentBowler(data.currentState.currentBowler);
             }
           }
 
-          // Update score from the response
-          if (responseData.data.currentScore) {
-            setScore(responseData.data.currentScore);
+          // Update current bowler stats from the response
+          if (data.updatedPlayers && data.updatedPlayers.bowler) {
+            console.log("🎳 Updating bowler stats in real-time:", {
+              bowlerName: data.updatedPlayers.bowler.playerName,
+              bowlingStats: data.updatedPlayers.bowler.bowling,
+            });
 
-            // Check for innings completion (20 overs or all out)
-            const inningsComplete = checkInningsCompletion(
-              responseData.data.currentScore
-            );
+            setCurrentBowlerStats({
+              playerId: data.updatedPlayers.bowler.playerId,
+              playerName: data.updatedPlayers.bowler.playerName,
+              balls: data.updatedPlayers.bowler.bowling?.balls || 0,
+              runs: data.updatedPlayers.bowler.bowling?.runs || 0,
+              wickets: data.updatedPlayers.bowler.bowling?.wickets || 0,
+              overs: data.updatedPlayers.bowler.bowling?.overs || 0,
+              economyRate: data.updatedPlayers.bowler.bowling?.economyRate || 0,
+            });
+          }
+
+          // Update score from the response
+          if (data.score) {
+            setScore(data.score);
+          }
+
+          // Handle innings status from backend
+          if (data.inningsStatus) {
+            const {
+              inningsComplete,
+              requiresInningsTransition,
+              requiresMatchCompletion,
+              matchCompleted,
+              matchResult,
+              isLastBallOfInnings,
+              ballsRemaining,
+              oversRemaining,
+              target,
+              targetRemaining,
+            } = data.inningsStatus;
+
+            console.log("🏏 Innings Status:", {
+              inningsComplete,
+              requiresInningsTransition,
+              requiresMatchCompletion,
+              matchCompleted,
+              isLastBallOfInnings,
+              ballsRemaining,
+              oversRemaining,
+            });
+
+            // Show target information for second innings
+            if (target && targetRemaining !== undefined) {
+              const message = `Target: ${target} runs | Need ${Math.max(
+                0,
+                targetRemaining
+              )} runs in ${ballsRemaining} balls`;
+              setStatus(message);
+              setLiveUpdates((prev) => [
+                ...prev,
+                {
+                  type: "info",
+                  message: `🎯 ${message}`,
+                  time: new Date(),
+                },
+              ]);
+            }
+
+            // Handle match completion
+            if (matchCompleted || requiresMatchCompletion) {
+              console.log("🏆 MATCH COMPLETED!");
+
+              // Set match result from backend
+              if (matchResult) {
+                setMatchResult(matchResult);
+              } else {
+                // Calculate result if not provided
+                const result = calculateMatchResult(data.score || score);
+                setMatchResult(result);
+              }
+
+              setStatus("🏆 MATCH COMPLETED!");
+              setShowMatchComplete(true);
+              return;
+            }
+
+            // Handle innings completion
             if (inningsComplete) {
-              console.log("🏏 Innings completed, stopping further processing");
-              return; // Stop processing if innings is complete
+              console.log("🏁 INNINGS COMPLETED!");
+
+              if (requiresMatchCompletion) {
+                // Match completed - show match complete dialog
+                console.log("🏆 MATCH COMPLETED!");
+                setStatus("🏆 MATCH COMPLETED!");
+                setShowMatchComplete(true);
+                return;
+              } else if (requiresInningsTransition) {
+                // First innings completed - show innings break
+                console.log(
+                  "🔄 First innings completed - transitioning to second innings"
+                );
+
+                // Calculate and set target for second innings
+                const calculatedTarget = target || (score?.runs || 0) + 1;
+                console.log(
+                  "🎯 Setting target for second innings:",
+                  calculatedTarget
+                );
+                setTargetScore(calculatedTarget);
+
+                setStatus(
+                  "🏁 First innings completed! Preparing for second innings..."
+                );
+                setShowInningsBreak(true);
+                return;
+              } else {
+                // Innings complete but no automatic transition (e.g., manual control needed)
+                setStatus("🏁 Innings completed!");
+                return;
+              }
             }
           }
 
           // Update live updates feed with proper commentary
           const commentary =
-            responseData.data.commentary ||
-            `${ballData.runs.total} runs scored`;
+            data.ball?.commentary || `${ballData.runs.total} runs scored`;
           setLiveUpdates((prev) => [
             ...prev,
             {
@@ -1831,15 +2227,15 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           ]);
 
           // Check for over completion (need new bowler selection)
-          if (responseData.data.currentScore) {
-            const ballsInOver = responseData.data.currentScore.balls % 6;
+          if (data.score) {
+            const ballsInOver = data.score.balls % 6;
             const wasLegalBall =
               ballData.ballType === "legal" ||
               ballData.ballType === "bye" ||
               ballData.ballType === "leg-bye";
 
             console.log("🏏 Over completion check:", {
-              totalBalls: responseData.data.currentScore.balls,
+              totalBalls: data.score.balls,
               ballsInOver,
               wasLegalBall,
               ballType: ballData.ballType,
@@ -1859,7 +2255,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
               ballData.wicket.dismissedPlayer ||
               (ballData.wicket.wicketType === "run-out"
                 ? null
-                : updatedMatch.currentState.currentBatsmen.striker);
+                : data.currentState?.currentBatsmen?.striker);
             if (dismissedPlayer) {
               console.log(
                 "🏏 WICKET DETECTED! Showing batsman replacement modal:",
@@ -1996,33 +2392,35 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         return;
       }
 
-      // Check if current innings has already completed 20 overs (120 balls)
+      // Get match overs limit (dynamic based on match configuration)
+      const maxOvers = match.overs || 20;
+      const maxBalls = maxOvers * 6;
+
+      // Check if current innings has already completed max overs
       const currentBalls = score.balls || 0;
       const currentOvers = Math.floor(currentBalls / 6);
       const ballsInCurrentOver = currentBalls % 6;
 
-      if (currentBalls >= 120) {
-        const message = `⚠️ INNINGS COMPLETED! 20 overs limit reached (${currentOvers}.${ballsInCurrentOver} overs, ${currentBalls} balls)`;
+      if (currentBalls >= maxBalls) {
+        const message = `⚠️ INNINGS COMPLETED! ${maxOvers} overs limit reached (${currentOvers}.${ballsInCurrentOver} overs, ${currentBalls} balls)`;
         setStatus(message);
         addGlobalError(
-          "Cannot bowl more than 20 overs in an innings. The current innings is already completed.",
+          `Cannot bowl more than ${maxOvers} overs in an innings. The current innings is already completed.`,
           "validation",
           () => {
-            console.log("🏁 Innings completed - no action available");
+            console.log("🏁 Innings completed - transition required");
           }
         );
         return;
       }
 
-      // Check if this ball would complete the 20th over
+      // Check if this is the last ball of innings or second-last ball (show warning)
       const ballType = currentBall.ballType || "legal";
       const isLegalDelivery =
         ballType === "legal" || ballType === "bye" || ballType === "leg-bye";
-
-      if (isLegalDelivery && currentBalls >= 119) {
-        console.log("🏁 This ball will complete the 20th over");
-        setStatus("⚠️ Final ball of the innings - 20 overs will be completed");
-      }
+      const isLastBallOfInnings =
+        isLegalDelivery && currentBalls === maxBalls - 1;
+      const isSecondLastBall = isLegalDelivery && currentBalls === maxBalls - 2;
 
       // Get current batsman and bowler from match state
       const currentBatsmen = match.currentState?.currentBatsmen;
@@ -2038,6 +2436,31 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       if (!currentBowler) {
         setStatus("Error: No bowler set. Make sure match is started properly!");
         return;
+      }
+
+      // Show confirmation dialog for last ball of innings
+      if (isLastBallOfInnings) {
+        console.log(
+          "🏁 This is the last ball of the innings - showing confirmation"
+        );
+        setStatus(
+          `⚠️ FINAL BALL of ${maxOvers} overs - Confirm to complete innings`
+        );
+        setPendingLastBall({ currentBatsmen, currentBowler });
+        setShowLastBallConfirmation(true);
+        return;
+      }
+
+      // Show warning for second-last ball
+      if (isSecondLastBall) {
+        console.log("⚠️ Second-last ball of the innings");
+        setStatus(
+          `⚠️ Only 1 ball remaining after this in ${maxOvers} over innings`
+        );
+      } else if (isLegalDelivery && currentBalls >= maxBalls - 6) {
+        // Warning for last over
+        const ballsLeft = maxBalls - currentBalls;
+        setStatus(`⚠️ Last over - ${ballsLeft} balls remaining`);
       }
 
       // Special handling for wickets
@@ -2730,6 +3153,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           availableBowlers={availableBowlers}
           match={match}
           onPlayersSelected={updateCurrentPlayers}
+          autoPopulateTeams={match?.currentState?.currentInnings === 2}
         />
       </div>
     );
@@ -2779,6 +3203,27 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
             <h4 style={{ margin: 0 }}>
               {match.teams?.team1?.teamName} vs {match.teams?.team2?.teamName}
             </h4>
+            <p style={{ margin: "2px 0", fontSize: "12px", color: "#6c757d" }}>
+              {match.matchType || "T20"} • {match.overs} overs
+              {match.matchFormat && (
+                <span
+                  style={{
+                    marginLeft: "8px",
+                    fontWeight: "bold",
+                    color: "#007bff",
+                  }}
+                >
+                  •{" "}
+                  {match.matchFormat === "overarm"
+                    ? "⚾ Overarm"
+                    : match.matchFormat === "leather-ball"
+                    ? "🏏 Leather Ball"
+                    : match.matchFormat === "underarm"
+                    ? "🥎 Underarm"
+                    : match.matchFormat}
+                </span>
+              )}
+            </p>
             {score.innings === 2 && (
               <p
                 style={{
@@ -2842,6 +3287,26 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           <strong>Current Score:</strong> {score.runs}/{score.wickets} (
           {Math.floor(score.balls / 6)}.{score.balls % 6} overs)
         </p>
+
+        {/* Show target for second innings */}
+        {match?.currentState?.currentInnings === 2 && targetScore > 0 && (
+          <p
+            style={{
+              fontSize: "16px",
+              fontWeight: "bold",
+              color: "#0066cc",
+              margin: "10px 0",
+              padding: "10px",
+              background: "#e7f3ff",
+              borderRadius: "5px",
+              border: "2px solid #0066cc",
+            }}
+          >
+            🎯 Target: {targetScore} runs | Need:{" "}
+            {Math.max(0, targetScore - score.runs)} runs to win
+          </p>
+        )}
+
         <p>
           <strong>Current Ball:</strong> Over {Math.floor(score.balls / 6) + 1},
           Ball {score.balls % 6}
@@ -2965,15 +3430,17 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 </span>
               </div>
               <div style={{ textAlign: "right" }}>
-                <strong>Balls Left: {120 - score.balls}</strong>
+                <strong>
+                  Balls Left: {(match?.overs || 20) * 6 - score.balls}
+                </strong>
                 <br />
                 <span style={{ color: "#666" }}>
                   RRR:{" "}
-                  {score.balls >= 120
+                  {score.balls >= (match?.overs || 20) * 6
                     ? "0.00"
                     : (
                         (targetScore - score.runs) /
-                        ((120 - score.balls) / 6)
+                        (((match?.overs || 20) * 6 - score.balls) / 6)
                       ).toFixed(2)}
                 </span>
               </div>
@@ -2982,15 +3449,24 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
               <div
                 style={{
                   marginTop: 8,
-                  padding: 8,
-                  background: "#d4edda",
-                  borderRadius: 4,
+                  padding: 12,
+                  background:
+                    "linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%)",
+                  borderRadius: 6,
                   color: "#155724",
                   fontWeight: "bold",
                   textAlign: "center",
+                  border: "2px solid #28a745",
                 }}
               >
-                🎉 TARGET ACHIEVED! 🎉
+                🎉{" "}
+                {match?.currentState?.battingTeam?.teamName || "Batting Team"}{" "}
+                WON! 🎉
+                <br />
+                <span style={{ fontSize: "14px", fontWeight: "normal" }}>
+                  Won by {(match?.playersPerTeam || 11) - score.wickets} wickets
+                  with {(match?.overs || 20) * 6 - score.balls} balls remaining
+                </span>
               </div>
             )}
           </div>
@@ -3493,8 +3969,14 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       {/* Record Ball Button */}
       {(() => {
         const currentBalls = score.balls || 0;
-        const inningsCompleted = currentBalls >= 120;
-        const isDisabled = !isConnected || inningsCompleted;
+        const maxBalls = (match?.overs || 20) * 6;
+        const inningsCompleted = currentBalls >= maxBalls;
+        const matchCompleted =
+          match?.currentState?.status === "completed" ||
+          (match?.currentState?.currentInnings === 2 &&
+            targetScore > 0 &&
+            score.runs >= targetScore);
+        const isDisabled = !isConnected || inningsCompleted || matchCompleted;
 
         return (
           <button
@@ -3507,7 +3989,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
               fontWeight: "bold",
               border: "none",
               borderRadius: 5,
-              background: inningsCompleted
+              background: matchCompleted
+                ? "#28a745"
+                : inningsCompleted
                 ? "#d32f2f"
                 : isConnected
                 ? "#28a745"
@@ -3517,7 +4001,11 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
               opacity: isDisabled ? 0.7 : 1,
             }}
           >
-            {inningsCompleted ? "🏁 INNINGS COMPLETED" : "🏏 RECORD BALL"}
+            {matchCompleted
+              ? "🏆 MATCH COMPLETED"
+              : inningsCompleted
+              ? "🏁 INNINGS COMPLETED"
+              : "🏏 RECORD BALL"}
           </button>
         );
       })()}
@@ -3526,7 +4014,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       <div style={{ marginTop: 15 }}>
         <button
           onClick={undoLastBall}
-          disabled={!canUndo || isUndoing}
+          disabled={
+            !canUndo || isUndoing || match?.currentState?.status === "completed"
+          }
           style={{
             width: "100%",
             padding: "15px",
@@ -3534,17 +4024,43 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
             fontWeight: "bold",
             border: "2px solid #ff9800",
             borderRadius: 5,
-            background: canUndo && !isUndoing ? "#fff3e0" : "#e0e0e0",
-            color: canUndo && !isUndoing ? "#f57c00" : "#9e9e9e",
-            cursor: canUndo && !isUndoing ? "pointer" : "not-allowed",
-            opacity: canUndo && !isUndoing ? 1 : 0.6,
+            background:
+              canUndo &&
+              !isUndoing &&
+              match?.currentState?.status !== "completed"
+                ? "#fff3e0"
+                : "#e0e0e0",
+            color:
+              canUndo &&
+              !isUndoing &&
+              match?.currentState?.status !== "completed"
+                ? "#f57c00"
+                : "#9e9e9e",
+            cursor:
+              canUndo &&
+              !isUndoing &&
+              match?.currentState?.status !== "completed"
+                ? "pointer"
+                : "not-allowed",
+            opacity:
+              canUndo &&
+              !isUndoing &&
+              match?.currentState?.status !== "completed"
+                ? 1
+                : 0.6,
             transition: "all 0.3s ease",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             gap: "10px",
           }}
-          title={!canUndo ? "No balls to undo" : "Undo the last ball recorded"}
+          title={
+            match?.currentState?.status === "completed"
+              ? "Match completed - Cannot undo"
+              : !canUndo
+              ? "No balls to undo"
+              : "Undo the last ball recorded"
+          }
         >
           <span style={{ fontSize: "24px" }}>↶</span>
           <span>{isUndoing ? "UNDOING..." : "UNDO LAST BALL"}</span>
@@ -3696,7 +4212,14 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   match.teams.team1.teamId === battingTeamId
                     ? match.teams.team1
                     : match.teams.team2;
-                return (battingTeam?.players || [])
+
+                // Use selectedPlayers if available, otherwise fall back to all players
+                const players =
+                  battingTeam?.selectedPlayers?.length > 0
+                    ? battingTeam.selectedPlayers
+                    : battingTeam?.players || [];
+
+                return players
                   .filter(
                     (player) =>
                       player.playerId !==
@@ -3816,7 +4339,14 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   match.teams.team1.teamId === bowlingTeamId
                     ? match.teams.team1
                     : match.teams.team2;
-                return (bowlingTeam?.players || []).map((player) => (
+
+                // Use selectedPlayers if available, otherwise fall back to all players
+                const players =
+                  bowlingTeam?.selectedPlayers?.length > 0
+                    ? bowlingTeam.selectedPlayers
+                    : bowlingTeam?.players || [];
+
+                return players.map((player) => (
                   <option key={player.playerId} value={player.playerId}>
                     {player.playerName}
                   </option>
@@ -4008,7 +4538,14 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   match.teams.team1.teamId === bowlingTeamId
                     ? match.teams.team1
                     : match.teams.team2;
-                return (bowlingTeam?.players || []).map((player) => (
+
+                // Use selectedPlayers if available, otherwise fall back to all players
+                const players =
+                  bowlingTeam?.selectedPlayers?.length > 0
+                    ? bowlingTeam.selectedPlayers
+                    : bowlingTeam?.players || [];
+
+                return players.map((player) => (
                   <option key={player.playerId} value={player.playerId}>
                     {player.playerName}
                   </option>
@@ -4038,7 +4575,14 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   match.teams.team1.teamId === bowlingTeamId
                     ? match.teams.team1
                     : match.teams.team2;
-                return (bowlingTeam?.players || [])
+
+                // Use selectedPlayers if available, otherwise fall back to all players
+                const players =
+                  bowlingTeam?.selectedPlayers?.length > 0
+                    ? bowlingTeam.selectedPlayers
+                    : bowlingTeam?.players || [];
+
+                return players
                   .filter((p) => p.playerId !== selectedFielder)
                   .map((player) => (
                     <option key={player.playerId} value={player.playerId}>
@@ -4170,6 +4714,162 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         </div>
       )}
 
+      {/* Last Ball Confirmation Modal */}
+      {showLastBallConfirmation && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 2000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: 40,
+              borderRadius: 12,
+              minWidth: 450,
+              maxWidth: 600,
+              boxShadow: "0 8px 16px rgba(0,0,0,0.3)",
+              border: "3px solid #dc3545",
+            }}
+          >
+            <h2
+              style={{
+                margin: "0 0 20px 0",
+                color: "#dc3545",
+                textAlign: "center",
+              }}
+            >
+              ⚠️ FINAL BALL WARNING
+            </h2>
+
+            <div
+              style={{
+                backgroundColor: "#fff3cd",
+                padding: "20px",
+                borderRadius: "8px",
+                marginBottom: "20px",
+                border: "2px solid #ffc107",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 10px 0",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                }}
+              >
+                This is the LAST BALL of the innings!
+              </p>
+              <p style={{ margin: "0", fontSize: "14px", color: "#856404" }}>
+                Once recorded, this action CANNOT be undone.
+              </p>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: "#f8f9fa",
+                padding: "15px",
+                borderRadius: "6px",
+                marginBottom: "25px",
+              }}
+            >
+              <p style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
+                <strong>Current Score:</strong> {score?.runs}/{score?.wickets}{" "}
+                in {Math.floor((score?.balls || 0) / 6)}.
+                {(score?.balls || 0) % 6} overs
+              </p>
+              <p style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
+                <strong>Ball Type:</strong>{" "}
+                {currentBall.ballType?.toUpperCase() || "LEGAL"}
+              </p>
+              <p style={{ margin: "0", fontSize: "14px" }}>
+                <strong>Runs:</strong> {currentBall.runs || 0}
+                {currentBall.isWicket && (
+                  <span style={{ color: "#dc3545", marginLeft: "10px" }}>
+                    + WICKET
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <p
+              style={{
+                textAlign: "center",
+                fontSize: "15px",
+                fontWeight: "bold",
+                marginBottom: "25px",
+                color: "#495057",
+              }}
+            >
+              Are you sure you want to record this ball?
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 15,
+                justifyContent: "center",
+              }}
+            >
+              <button
+                onClick={() => {
+                  setShowLastBallConfirmation(false);
+                  setPendingLastBall(null);
+                  setStatus("Last ball recording cancelled");
+                }}
+                style={{
+                  padding: "12px 30px",
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                }}
+              >
+                ❌ Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowLastBallConfirmation(false);
+                  setStatus("Recording final ball of innings...");
+                  // Proceed with ball recording
+                  if (pendingLastBall) {
+                    await processBallRecording(
+                      pendingLastBall.currentBatsmen,
+                      pendingLastBall.currentBowler
+                    );
+                  }
+                  setPendingLastBall(null);
+                }}
+                style={{
+                  padding: "12px 30px",
+                  backgroundColor: "#dc3545",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                }}
+              >
+                ✅ Confirm & Record
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* New Bowler Selection Modal */}
       {showNewBowlerSelection && (
         <div
@@ -4220,16 +4920,29 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                       match.teams.team1.teamId === bowlingTeamId
                         ? match.teams.team1
                         : match.teams.team2;
-                    const bowlingPlayers =
+
+                    // Use selectedPlayers if available, otherwise fall back to bowlingOrder or all players
+                    let bowlingPlayers;
+                    if (
+                      bowlingTeam.selectedPlayers &&
+                      bowlingTeam.selectedPlayers.length > 0
+                    ) {
+                      bowlingPlayers = bowlingTeam.selectedPlayers;
+                    } else if (
                       bowlingTeam.bowlingOrder &&
                       bowlingTeam.bowlingOrder.length > 0
-                        ? bowlingTeam.bowlingOrder.map((orderPlayer) => {
-                            const fullPlayer = bowlingTeam.players.find(
-                              (p) => p.playerId === orderPlayer.playerId
-                            );
-                            return fullPlayer || orderPlayer;
-                          })
-                        : bowlingTeam.players || [];
+                    ) {
+                      bowlingPlayers = bowlingTeam.bowlingOrder.map(
+                        (orderPlayer) => {
+                          const fullPlayer = bowlingTeam.players.find(
+                            (p) => p.playerId === orderPlayer.playerId
+                          );
+                          return fullPlayer || orderPlayer;
+                        }
+                      );
+                    } else {
+                      bowlingPlayers = bowlingTeam.players || [];
+                    }
 
                     return bowlingPlayers
                       .filter(
@@ -4394,7 +5107,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
               <p
                 style={{ fontSize: "14px", margin: "5px 0 0 0", color: "#666" }}
               >
-                In 20 overs (120 balls)
+                In {match?.overs || 20} overs ({(match?.overs || 20) * 6} balls)
               </p>
             </div>
 

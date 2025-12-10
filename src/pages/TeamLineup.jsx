@@ -196,12 +196,6 @@ const TeamLineup = ({ matchId, token, onLineupSet, onBack }) => {
               team1PlayingXI.find((p) => p.playerId === team1WicketKeeper)
                 ?.playerName,
           };
-        } else {
-          // Default to last player as wicketKeeper
-          team1LineupData.wicketKeeper = {
-            playerId: team1PlayingXI[team1PlayingXI.length - 1].playerId,
-            playerName: team1PlayingXI[team1PlayingXI.length - 1].playerName,
-          };
         }
 
         console.log("Saving team 1 lineup:", team1LineupData);
@@ -267,12 +261,6 @@ const TeamLineup = ({ matchId, token, onLineupSet, onBack }) => {
               team2WicketKeeper.playerName ||
               team2PlayingXI.find((p) => p.playerId === team2WicketKeeper)
                 ?.playerName,
-          };
-        } else {
-          // Default to last player as wicketKeeper
-          team2LineupData.wicketKeeper = {
-            playerId: team2PlayingXI[team2PlayingXI.length - 1].playerId,
-            playerName: team2PlayingXI[team2PlayingXI.length - 1].playerName,
           };
         }
 

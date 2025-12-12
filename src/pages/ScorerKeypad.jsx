@@ -661,7 +661,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         ...prev,
         {
           type: "success",
-          message: `🎯 Target: ${target} runs in 20 overs`,
+          message: `🎯 Target: ${target} runs in ${match?.overs || 20} overs`,
           time: new Date(),
         },
       ]);
@@ -760,6 +760,11 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
   };
 
   const calculateMatchResult = (finalScore) => {
+    console.log("🎯 Calculating match result with:", {
+      finalScore,
+      targetScore,
+      match: match?.overs,
+    });
     if (!match || !targetScore) return null;
 
     const team1Name = match.teams?.team1?.teamName || "Team 1";
@@ -3182,6 +3187,89 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         </p>
       </div>
 
+      {/* Innings Indicator - Prominent Display */}
+      <div
+        style={{
+          marginBottom: 20,
+          padding: "15px 20px",
+          background:
+            match?.currentState?.currentInnings === 2
+              ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+              : "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+          borderRadius: 8,
+          boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
+          border: "2px solid rgba(255,255,255,0.3)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <h2
+              style={{
+                margin: 0,
+                color: "white",
+                fontSize: "24px",
+                fontWeight: "bold",
+                textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+              }}
+            >
+              {match?.currentState?.currentInnings === 2
+                ? "2️⃣ SECOND INNINGS"
+                : "1️⃣ FIRST INNINGS"}
+            </h2>
+            <p
+              style={{
+                margin: "5px 0 0 0",
+                color: "rgba(255,255,255,0.95)",
+                fontSize: "16px",
+                fontWeight: "500",
+              }}
+            >
+              {match?.currentState?.battingTeam?.teamName || "Unknown Team"}{" "}
+              batting •{" "}
+              {match?.currentState?.bowlingTeam?.teamName || "Unknown Team"}{" "}
+              bowling
+            </p>
+          </div>
+          <div
+            style={{
+              backgroundColor: "rgba(255,255,255,0.25)",
+              padding: "10px 20px",
+              borderRadius: 6,
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <div
+              style={{
+                color: "white",
+                fontSize: "14px",
+                fontWeight: "600",
+                textAlign: "center",
+              }}
+            >
+              INNINGS
+            </div>
+            <div
+              style={{
+                color: "white",
+                fontSize: "32px",
+                fontWeight: "bold",
+                textAlign: "center",
+                lineHeight: 1,
+                textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+              }}
+            >
+              {match?.currentState?.currentInnings || 1}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Match Info */}
       <div
         style={{
@@ -3224,19 +3312,6 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 </span>
               )}
             </p>
-            {score.innings === 2 && (
-              <p
-                style={{
-                  margin: "5px 0 0 0",
-                  fontSize: "14px",
-                  color: "#6c757d",
-                  fontStyle: "italic",
-                }}
-              >
-                🏏 Second Innings: {match.currentState?.battingTeam?.name}{" "}
-                batting
-              </p>
-            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             {!isOnline && (
@@ -3312,14 +3387,16 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           Ball {score.balls % 6}
         </p>
 
-        {/* 20 Overs Limit Warning */}
+        {/* Overs Limit Warning */}
         {(() => {
           const currentBalls = score.balls || 0;
           const currentOvers = Math.floor(currentBalls / 6);
           const ballsInCurrentOver = currentBalls % 6;
-          const ballsRemaining = 120 - currentBalls;
+          const maxOvers = match?.overs || 20;
+          const maxBalls = maxOvers * 6;
+          const ballsRemaining = maxBalls - currentBalls;
 
-          if (currentBalls >= 120) {
+          if (currentBalls >= maxBalls) {
             // Innings completed
             return (
               <div
@@ -3337,16 +3414,17 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 </h5>
                 <p style={{ margin: 0, fontSize: "14px", color: "#c62828" }}>
                   <strong>
-                    20 overs completed ({currentOvers}.{ballsInCurrentOver}{" "}
-                    overs, {currentBalls} balls)
+                    {maxOvers} {maxOvers === 1 ? "over" : "overs"} completed (
+                    {currentOvers}.{ballsInCurrentOver} overs, {currentBalls}{" "}
+                    balls)
                   </strong>
                   <br />
                   No more balls can be bowled in this innings.
                 </p>
               </div>
             );
-          } else if (currentBalls >= 114) {
-            // Last over (19.0 to 19.6)
+          } else if (currentBalls >= maxBalls - 6) {
+            // Last over
             return (
               <div
                 style={{
@@ -3363,14 +3441,15 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 </h5>
                 <p style={{ margin: 0, fontSize: "14px", color: "#ef6c00" }}>
                   <strong>Last over in progress!</strong> Only {ballsRemaining}{" "}
-                  balls remaining.
+                  {ballsRemaining === 1 ? "ball" : "balls"} remaining.
                   <br />
-                  Innings will end after {ballsRemaining} more legal deliveries.
+                  Innings will end after {ballsRemaining} more legal{" "}
+                  {ballsRemaining === 1 ? "delivery" : "deliveries"}.
                 </p>
               </div>
             );
-          } else if (currentBalls >= 108) {
-            // Second last over (18.0 to 18.6)
+          } else if (currentBalls >= maxBalls - 12) {
+            // Second last over
             return (
               <div
                 style={{
@@ -3383,11 +3462,15 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 }}
               >
                 <h5 style={{ margin: "0 0 8px 0", color: "#8e24aa" }}>
-                  ⏰ APPROACHING 20 OVERS
+                  ⏰ APPROACHING {maxOvers} {maxOvers === 1 ? "OVER" : "OVERS"}
                 </h5>
                 <p style={{ margin: 0, fontSize: "14px", color: "#7b1fa2" }}>
-                  <strong>{ballsRemaining} balls remaining</strong> before
-                  20-over limit.
+                  <strong>
+                    {ballsRemaining} {ballsRemaining === 1 ? "ball" : "balls"}{" "}
+                    remaining
+                  </strong>{" "}
+                  before
+                  {maxOvers}-over limit.
                   <br />
                   Current: {currentOvers}.{ballsInCurrentOver} overs
                 </p>
@@ -5107,7 +5190,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
               <p
                 style={{ fontSize: "14px", margin: "5px 0 0 0", color: "#666" }}
               >
-                In {match?.overs || 20} overs ({(match?.overs || 20) * 6} balls)
+                In {match?.overs || 20} {match?.overs === 1 ? "over" : "overs"}{" "}
+                ({(match?.overs || 20) * 6}{" "}
+                {(match?.overs || 20) * 6 === 1 ? "ball" : "balls"})
               </p>
             </div>
 
@@ -5261,7 +5346,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   📉{" "}
                   {matchResult.howLost === "all out"
                     ? "Team was all out"
-                    : "Completed 20 overs"}
+                    : `Completed ${match?.overs || 20} ${
+                        match?.overs === 1 ? "over" : "overs"
+                      }`}
                 </p>
               )}
             </div>
@@ -5319,7 +5406,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                     {targetScore}
                   </p>
                   <p style={{ margin: "0", fontSize: "14px", color: "#666" }}>
-                    (20 overs)
+                    ({match?.overs || 20} overs)
                   </p>
                 </div>
               </div>
@@ -5328,6 +5415,44 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
             <div
               style={{ display: "flex", gap: "15px", justifyContent: "center" }}
             >
+              <button
+                onClick={() => {
+                  setShowMatchComplete(false);
+                  // Navigate to completed scorecard view
+                  if (window.location.pathname.includes("App.jsx")) {
+                    // If using App.jsx routing
+                    window.dispatchEvent(
+                      new CustomEvent("navigate", {
+                        detail: { view: "completed-scorecard", matchId },
+                      })
+                    );
+                  } else {
+                    // Fallback: open in new tab
+                    window.open(`/scorecard/${matchId}`, "_blank");
+                  }
+                }}
+                style={{
+                  backgroundColor: "#667eea",
+                  color: "white",
+                  border: "none",
+                  padding: "12px 25px",
+                  borderRadius: "6px",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = "#5568d3";
+                  e.target.style.transform = "translateY(-2px)";
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = "#667eea";
+                  e.target.style.transform = "translateY(0)";
+                }}
+              >
+                🏆 View Full Scorecard
+              </button>
               <button
                 onClick={() => setShowMatchComplete(false)}
                 style={{
@@ -5340,7 +5465,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   cursor: "pointer",
                 }}
               >
-                📊 View Scorecard
+                ✕ Close
               </button>
               <button
                 onClick={() => window.location.reload()}

@@ -1,11 +1,10 @@
-/* Scorecard Test Page Styles */
 
 .scorecard-test {
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-/* Configuration Panel */
+
 .config-panel {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);

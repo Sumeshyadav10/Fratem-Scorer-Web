@@ -400,7 +400,7 @@ function PlayerCumulativeStats({ playerId: propPlayerId, token }) {
         <div className="controls">
           <input
             type="text"
-            placeholder="Enter Player ID"
+            placeholder="Enter Player ID or UID"
             value={playerId}
             onChange={(e) => setPlayerId(e.target.value)}
             disabled={!!propPlayerId}
@@ -411,6 +411,10 @@ function PlayerCumulativeStats({ playerId: propPlayerId, token }) {
           >
             {loading ? "Loading..." : "Fetch Stats"}
           </button>
+        </div>
+        <div className="search-hint">
+          💡 You can search using either Player ID (MongoDB ObjectId) or Player
+          UID
         </div>
       </div>
 
@@ -479,7 +483,17 @@ function PlayerCumulativeStats({ playerId: propPlayerId, token }) {
         <div className="empty-state">
           <div className="empty-icon">📊</div>
           <h3>No Player Data</h3>
-          <p>Enter a player ID to view career statistics and match history.</p>
+          <p>
+            Enter a player ID or UID to view career statistics and match
+            history.
+          </p>
+          <div className="example-hint">
+            <strong>Examples:</strong>
+            <ul>
+              <li>Player ID: 507f1f77bcf86cd799439011</li>
+              <li>Player UID: FUNJXP9B0G</li>
+            </ul>
+          </div>
         </div>
       )}
     </div>

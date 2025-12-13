@@ -442,9 +442,24 @@ const CompletedMatchScorecard = ({ matchId: propMatchId, onBack }) => {
               <ul>
                 {scorers.map((scorer, idx) => (
                   <li key={idx}>
-                    {typeof scorer === "string"
-                      ? scorer
-                      : scorer.name || scorer.userId || `Scorer ${idx + 1}`}
+                    {typeof scorer === "string" ? (
+                      scorer
+                    ) : (
+                      <div>
+                        <strong>{scorer.name || `Scorer ${idx + 1}`}</strong>
+                        {scorer.mobile && (
+                          <span
+                            style={{
+                              color: "#6c757d",
+                              fontSize: "14px",
+                              marginLeft: "8px",
+                            }}
+                          >
+                            📱 {scorer.mobile}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

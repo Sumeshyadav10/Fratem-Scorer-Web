@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import GlobalErrorNotification from "../components/GlobalErrorNotification";
+import OverSummary from "../components/OverSummary";
 import API_BASE_URL from "../config/api";
 
 // Player Selection Form Component
@@ -507,6 +508,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
   const [showLastBallConfirmation, setShowLastBallConfirmation] =
     useState(false);
   const [pendingLastBall, setPendingLastBall] = useState(null);
+  const [showWinningBallConfirmation, setShowWinningBallConfirmation] =
+    useState(false);
+  const [pendingWinningBall, setPendingWinningBall] = useState(null);
   const [outBatsman, setOutBatsman] = useState(null);
   const [pendingBallData, setPendingBallData] = useState(null);
   const [wicketBallData, setWicketBallData] = useState(null); // Store ball data for wicket scenarios
@@ -2443,6 +2447,76 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         return;
       }
 
+      // Special handling for wickets - PRIORITIZE FIELDER SELECTION BEFORE LAST BALL CHECK
+      if (currentBall.isWicket) {
+        // For run-out, ask which batsman got out
+        if (currentBall.wicketType === "run-out") {
+          setShowRunOutSelection(true);
+          setPendingBallData({
+            currentBatsmen,
+            currentBowler,
+            isLastBallOfInnings,
+          });
+          return;
+        }
+
+        // For caught, ask for fielder if not already set - MUST BE DONE BEFORE LAST BALL CONFIRMATION
+        if (currentBall.wicketType === "caught" && !currentBall.fielder) {
+          setShowFielderSelection(true);
+          setPendingBallData({
+            currentBatsmen,
+            currentBowler,
+            isLastBallOfInnings,
+          });
+          return;
+        }
+
+        // For stumped, ask for fielder (wicket-keeper) if not already set
+        if (currentBall.wicketType === "stumped" && !currentBall.fielder) {
+          setShowFielderSelection(true);
+          setPendingBallData({
+            currentBatsmen,
+            currentBowler,
+            isLastBallOfInnings,
+          });
+          return;
+        }
+      }
+
+      // Check for winning ball in second innings BEFORE last ball confirmation
+      if (match.currentState?.currentInnings === 2) {
+        const target =
+          match.currentState?.target || match.score?.innings2?.target || 0;
+        const currentRuns = score.runs || 0;
+        const runsToAdd = currentBall.runs || 0;
+        const totalRunsAfterBall = currentRuns + runsToAdd;
+
+        console.log("🎯 Checking winning ball scenario:", {
+          currentInnings: match.currentState.currentInnings,
+          target,
+          currentRuns,
+          runsToAdd,
+          totalRunsAfterBall,
+          willWin: totalRunsAfterBall >= target,
+        });
+
+        // If this ball will win the match, ask for confirmation
+        if (target > 0 && totalRunsAfterBall >= target) {
+          console.log("🏆 WINNING BALL DETECTED - Showing confirmation");
+          setStatus(
+            `🎯 This ball will achieve the target! Confirm winning ball.`
+          );
+          setPendingWinningBall({
+            currentBatsmen,
+            currentBowler,
+            isLastBallOfInnings,
+          });
+          setShowWinningBallConfirmation(true);
+          return;
+        }
+      }
+
+      // AFTER wicket and winning ball handling, check for last ball confirmation
       // Show confirmation dialog for last ball of innings
       if (isLastBallOfInnings) {
         console.log(
@@ -2466,23 +2540,6 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         // Warning for last over
         const ballsLeft = maxBalls - currentBalls;
         setStatus(`⚠️ Last over - ${ballsLeft} balls remaining`);
-      }
-
-      // Special handling for wickets
-      if (currentBall.isWicket) {
-        // For run-out, ask which batsman got out
-        if (currentBall.wicketType === "run-out") {
-          setShowRunOutSelection(true);
-          setPendingBallData({ currentBatsmen, currentBowler });
-          return;
-        }
-
-        // For caught, ask for fielder if not already set
-        if (currentBall.wicketType === "caught" && !currentBall.fielder) {
-          setShowFielderSelection(true);
-          setPendingBallData({ currentBatsmen, currentBowler });
-          return;
-        }
       }
 
       // Proceed with normal ball recording
@@ -3897,6 +3954,12 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         </div>
       </div>
 
+      {/* Over Summary Component */}
+      <OverSummary
+        match={match}
+        currentInnings={match?.currentState?.currentInnings || 1}
+      />
+
       {/* Quick Runs */}
       <div style={{ marginBottom: 20 }}>
         <h5>Quick Runs</h5>
@@ -4947,6 +5010,174 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 }}
               >
                 ✅ Confirm & Record
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Winning Ball Confirmation Modal */}
+      {showWinningBallConfirmation && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.8)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 2100,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: 40,
+              borderRadius: 12,
+              minWidth: 500,
+              maxWidth: 650,
+              boxShadow: "0 8px 16px rgba(0,0,0,0.3)",
+              border: "4px solid #28a745",
+            }}
+          >
+            <h2
+              style={{
+                margin: "0 0 20px 0",
+                color: "#28a745",
+                textAlign: "center",
+                fontSize: "28px",
+              }}
+            >
+              🏆 WINNING BALL!
+            </h2>
+
+            <div
+              style={{
+                backgroundColor: "#d4edda",
+                padding: "20px",
+                borderRadius: "8px",
+                marginBottom: "20px",
+                border: "2px solid #28a745",
+              }}
+            >
+              <p
+                style={{
+                  margin: "0 0 10px 0",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  color: "#155724",
+                }}
+              >
+                🎯 This ball will WIN THE MATCH!
+              </p>
+              <p style={{ margin: "0", fontSize: "14px", color: "#155724" }}>
+                The target will be achieved with this ball. Please confirm to
+                record.
+              </p>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: "#f8f9fa",
+                padding: "15px",
+                borderRadius: "6px",
+                marginBottom: "25px",
+              }}
+            >
+              <p style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
+                <strong>Current Score:</strong> {score?.runs}/{score?.wickets}
+              </p>
+              <p style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
+                <strong>Target:</strong>{" "}
+                {match?.currentState?.target ||
+                  match?.score?.innings2?.target ||
+                  0}
+              </p>
+              <p style={{ margin: "0 0 8px 0", fontSize: "14px" }}>
+                <strong>Runs to Add:</strong> {currentBall.runs || 0}
+              </p>
+              <p style={{ margin: "0", fontSize: "14px" }}>
+                <strong>Final Score:</strong>{" "}
+                {(score?.runs || 0) + (currentBall.runs || 0)}/
+                {score?.wickets || 0}
+                <span
+                  style={{
+                    color: "#28a745",
+                    marginLeft: "10px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  ✓ TARGET ACHIEVED
+                </span>
+              </p>
+            </div>
+
+            <p
+              style={{
+                textAlign: "center",
+                fontSize: "15px",
+                fontWeight: "bold",
+                marginBottom: "25px",
+                color: "#495057",
+              }}
+            >
+              Confirm this is the winning ball?
+            </p>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 15,
+                justifyContent: "center",
+              }}
+            >
+              <button
+                onClick={() => {
+                  setShowWinningBallConfirmation(false);
+                  setPendingWinningBall(null);
+                  setStatus("Winning ball recording cancelled");
+                }}
+                style={{
+                  padding: "12px 30px",
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                }}
+              >
+                ❌ Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowWinningBallConfirmation(false);
+                  setStatus("🏆 Recording winning ball...");
+                  // Proceed with ball recording
+                  if (pendingWinningBall) {
+                    await processBallRecording(
+                      pendingWinningBall.currentBatsmen,
+                      pendingWinningBall.currentBowler
+                    );
+                  }
+                  setPendingWinningBall(null);
+                }}
+                style={{
+                  padding: "12px 30px",
+                  backgroundColor: "#28a745",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                }}
+              >
+                🏆 Confirm & Win!
               </button>
             </div>
           </div>

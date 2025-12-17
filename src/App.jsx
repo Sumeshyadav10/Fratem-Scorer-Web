@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
+import Login from "./pages/Login";
 import PlayerEntry from "./pages/PlayerEntry";
 import LiveScoring from "./pages/LiveScoring";
 import ScorerKeypad from "./pages/ScorerKeypad";
@@ -14,12 +15,34 @@ import Breadcrumb from "./components/Breadcrumb";
 import API_BASE_URL from "./config/api";
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userData, setUserData] = useState(null);
   const [view, setView] = useState("entry");
   const [matchId, setMatchId] = useState("");
   const [userType, setUserType] = useState("");
   const [token, setToken] = useState("");
   const [match, setMatch] = useState(null);
   const [showLineupSelection, setShowLineupSelection] = useState(false);
+
+  // Check for existing authentication on mount
+  useEffect(() => {
+    const savedToken = localStorage.getItem("authToken");
+    const savedUserData = localStorage.getItem("userData");
+
+    if (savedToken && savedUserData) {
+      try {
+        const user = JSON.parse(savedUserData);
+        setToken(savedToken);
+        setUserData(user);
+        setUserType(user.userType || "organizer");
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error("Error parsing saved user data:", error);
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("userData");
+      }
+    }
+  }, []);
 
   // Listen for custom navigation events from child components
   useEffect(() => {
@@ -125,6 +148,26 @@ function App() {
     setToken(newToken);
   };
 
+  // Handle successful login
+  const handleLoginSuccess = (authData) => {
+    setToken(authData.token);
+    setUserData(authData.user);
+    setUserType(authData.userType);
+    setIsAuthenticated(true);
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userData");
+    setToken("");
+    setUserData(null);
+    setUserType("");
+    setIsAuthenticated(false);
+    setMatchId("");
+    setView("entry");
+  };
+
   // Function to check lineup and navigate to keypad
   const navigateToKeypad = async () => {
     if (!matchId) return;
@@ -184,6 +227,11 @@ function App() {
       console.error("Error fetching match:", error);
     }
   };
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="app-root">
@@ -259,10 +307,22 @@ function App() {
           >
             🏆 Match Result
           </button>
+          <button
+            onClick={handleLogout}
+            className="logout-btn"
+            style={{
+              marginLeft: "auto",
+              background: "#dc3545",
+              color: "white",
+            }}
+          >
+            🚪 Logout
+          </button>
         </nav>
         {matchId && (
           <div style={{ fontSize: 12, color: "#666", marginTop: 5 }}>
-            Match ID: {matchId} | User: {userType}
+            Match ID: {matchId} | User:{" "}
+            {userData?.name || userData?.email || userType}
           </div>
         )}
       </header>
@@ -318,7 +378,7 @@ function App() {
 
         {view === "scorecard" && (
           <ErrorBoundary>
-            <ScorecardTest />
+            <ScorecardTest matchId={matchId} />
           </ErrorBoundary>
         )}
 

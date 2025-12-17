@@ -8,20 +8,7 @@ function LiveScoring({ matchId: propMatchId, token, userType, onBack }) {
   const [score, setScore] = useState(null);
   const [commentary, setCommentary] = useState([]);
   const [message, setMessage] = useState("");
-  const [selectedToken, setSelectedToken] = useState("organizer");
   const clientRef = useRef(null);
-
-  // Fresh tokens (expires Nov 12, 2025)
-  const organizerToken =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGUxMTRkYWFkNzU3OTlkNTdkMThiMGUiLCJ1c2VyVHlwZSI6Im9yZ2FuaXplciIsImFjdGl2ZVJvbGUiOiJ0b3VybmFtZW50LW9yZ2FuaXplciIsImlhdCI6MTc2NTE3NDE1MCwiZXhwIjoxNzY1Nzc4OTUwfQ.uVNyAlaql9cXB35iLhO6Rgs8v-t7amgZr-HPz4oGi5A";
-  const playerToken =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGYwYmE2MTYyZmM5NzkxOGMyZGQ5ODYiLCJ1c2VyVHlwZSI6InBsYXllciIsImlhdCI6MTc2MjMyOTEyOSwiZXhwIjoxNzYyOTMzOTI5fQ.jDZspQPmhvL7F0Dljz8w6Pv4nCjsjrrq2nCtvXEQSdU";
-
-  function getToken() {
-    return (
-      token || (selectedToken === "organizer" ? organizerToken : playerToken)
-    );
-  }
 
   useEffect(() => {
     return () => {
@@ -31,8 +18,10 @@ function LiveScoring({ matchId: propMatchId, token, userType, onBack }) {
 
   function connect() {
     if (!matchId) return setMessage("Enter matchId");
+    if (!token) return setMessage("Authentication token missing");
+
     setMessage("Connecting...");
-    const client = createLiveClient(API_BASE_URL, getToken());
+    const client = createLiveClient(API_BASE_URL, token);
     clientRef.current = client;
 
     client.on("connection_established", (data) => {
@@ -91,19 +80,6 @@ function LiveScoring({ matchId: propMatchId, token, userType, onBack }) {
   return (
     <div className="page live-scoring">
       <h3>Live Scoring</h3>
-      <div style={{ marginBottom: 12 }}>
-        <label>
-          <strong>User Type:</strong>
-          <select
-            value={selectedToken}
-            onChange={(e) => setSelectedToken(e.target.value)}
-            style={{ marginLeft: 8 }}
-          >
-            <option value="organizer">Organizer (Can score)</option>
-            <option value="player">Player (Viewer)</option>
-          </select>
-        </label>
-      </div>
       <div style={{ marginBottom: 12 }}>
         <input
           placeholder="matchId"

@@ -32,7 +32,7 @@ function PlayerPoints({ matchId: propMatchId, token }) {
       setMatchId(propMatchId);
       fetchMatchPoints(propMatchId);
     }
-  }, [propMatchId]);
+  }, [propMatchId, token]);
 
   const fetchMatchPoints = async (id = matchId) => {
     if (!id) return;
@@ -42,7 +42,14 @@ function PlayerPoints({ matchId: propMatchId, token }) {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/player-points/match/${id}`
+        `${API_BASE_URL}/api/player-points/match/${id}`,
+        {
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {},
+        }
       );
       const data = await response.json();
 
@@ -79,7 +86,7 @@ function PlayerPoints({ matchId: propMatchId, token }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
+            Authorization: token ? `Bearer ${token}` : `Bearer ${getToken()}`,
           },
         }
       );
@@ -120,9 +127,13 @@ function PlayerPoints({ matchId: propMatchId, token }) {
       const response = await fetch(
         `${API_BASE_URL}/api/player-points/match/${matchId}/preview`,
         {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {
+                Authorization: `Bearer ${getToken()}`,
+              },
         }
       );
 
@@ -175,7 +186,7 @@ function PlayerPoints({ matchId: propMatchId, token }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`,
+            Authorization: token ? `Bearer ${token}` : `Bearer ${getToken()}`,
           },
         }
       );
@@ -245,7 +256,14 @@ function PlayerPoints({ matchId: propMatchId, token }) {
   const openPlayerDetails = async (playerId) => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/player-points/match/${matchId}/player/${playerId}`
+        `${API_BASE_URL}/api/player-points/match/${matchId}/player/${playerId}`,
+        {
+          headers: token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {},
+        }
       );
       const data = await response.json();
 

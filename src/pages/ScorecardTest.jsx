@@ -8,10 +8,17 @@ import API_BASE_URL from "../config/api";
  * Allows testing the match scorecard component with different match IDs
  */
 
-const ScorecardTest = () => {
-  const [matchId, setMatchId] = useState("MATCH-1764586886416-bdlq6sc4y");
+const ScorecardTest = ({ matchId: propMatchId }) => {
+  const [matchId, setMatchId] = useState(propMatchId || "");
   const [apiUrl, setApiUrl] = useState(API_BASE_URL);
   const [showConfig, setShowConfig] = useState(false);
+
+  // Update matchId when prop changes
+  React.useEffect(() => {
+    if (propMatchId) {
+      setMatchId(propMatchId);
+    }
+  }, [propMatchId]);
 
   // Sample match IDs for quick testing
   const sampleMatches = [
@@ -189,13 +196,19 @@ const ScorecardTest = () => {
           <div className="no-match">
             <div className="no-match-content">
               <h2>🏏 Match Scorecard Tester</h2>
-              <p>Please enter a valid match ID to view the scorecard</p>
-              <button
-                className="config-prompt"
-                onClick={() => setShowConfig(true)}
-              >
-                ⚙️ Configure Match Settings
-              </button>
+              <p>
+                {propMatchId
+                  ? "Loading match scorecard..."
+                  : "Please create or select a match to view the scorecard"}
+              </p>
+              {!propMatchId && (
+                <button
+                  className="config-prompt"
+                  onClick={() => setShowConfig(true)}
+                >
+                  ⚙️ Configure Match Settings
+                </button>
+              )}
             </div>
           </div>
         )}

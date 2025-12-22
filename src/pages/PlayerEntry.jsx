@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import API_BASE_URL from "../config/api";
 
 function PlayerEntry({ onCreated, onUserSet }) {
@@ -10,77 +10,24 @@ function PlayerEntry({ onCreated, onUserSet }) {
   const [status, setStatus] = useState("");
   const [createdMatch, setCreatedMatch] = useState(null);
   const [token, setToken] = useState("");
-  const [email, setEmail] = useState("test@example.com");
-  const [password, setPassword] = useState("password123");
 
   const apiBase = API_BASE_URL; // backend API URL from env
 
-  // Fresh tokens (expires Dec 15, 2025)
-  const organizerToken =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGUxMTRkYWFkNzU3OTlkNTdkMThiMGUiLCJ1c2VyVHlwZSI6Im9yZ2FuaXplciIsImlhdCI6MTc2NTE3NTEzMCwiZXhwIjoxNzY1Nzc5OTMwfQ.4UmZTj1Vfj-4SjAbgiLAjR4arUL_v4lDNd6rFFKVcLM";
-  const playerToken =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGYwYmE2MTYyZmM5NzkxOGMyZGQ5ODYiLCJ1c2VyVHlwZSI6InBsYXllciIsImlhdCI6MTc2NTE3NTEzMCwiZXhwIjoxNzY1Nzc5OTMwfQ.g4pqGF4Kbrk0SMGpHF_26a81F3GF2DJyBAWC-X7y89M";
-
-  function useOrganizerToken() {
-    setToken(organizerToken);
-    setStatus("Using Organizer Token - Ready to create matches!");
-    onUserSet && onUserSet("organizer", organizerToken);
-  }
-
-  function usePlayerToken() {
-    setToken(playerToken);
-    setStatus("Using Player Token - Ready for live scoring view!");
-    onUserSet && onUserSet("player", playerToken);
-  }
-
-  async function login() {
-    setStatus("Logging in...");
-    try {
-      const res = await fetch(`${apiBase}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
-
-      setToken(data.token);
-      setStatus(
-        "Logged in successfully! Token: " + data.token.substring(0, 20) + "..."
-      );
-    } catch (err) {
-      setStatus(
-        "Login error: " +
-          err.message +
-          " - Try registering first or use existing credentials"
-      );
+  // Load token from localStorage on mount
+  useEffect(() => {
+    const savedToken = localStorage.getItem("authToken");
+    if (savedToken) {
+      setToken(savedToken);
+      setStatus("✅ Authenticated from login");
+    } else {
+      setStatus("⚠️ Please login first to create matches");
     }
-  }
-
-  async function register() {
-    setStatus("Registering user...");
-    try {
-      const res = await fetch(`${apiBase}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, role: "admin" }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Registration failed");
-
-      setStatus(
-        "User registered! Check email for OTP verification, or try login directly."
-      );
-    } catch (err) {
-      setStatus("Registration error: " + err.message);
-    }
-  }
+  }, []);
 
   function getAuthHeaders() {
-    return token
-      ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+    const authToken = token || localStorage.getItem("authToken");
+    return authToken
+      ? { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" }
       : { "Content-Type": "application/json" };
   }
 
@@ -223,97 +170,22 @@ function PlayerEntry({ onCreated, onUserSet }) {
         style={{
           marginBottom: 24,
           padding: 20,
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: token 
+            ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" 
+            : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
           borderRadius: 12,
           boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
         }}
       >
-        <h4 style={{ margin: "0 0 16px 0", color: "white", fontSize: 16 }}>
-          🔑 Step 1: Authentication
-        </h4>
-        <div style={{ display: "flex", gap: 12 }}>
-          <button
-            onClick={useOrganizerToken}
-            style={{
-              flex: 1,
-              padding: "12px 20px",
-              background: "white",
-              color: "#667eea",
-              border: "none",
-              borderRadius: 8,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "transform 0.2s",
-            }}
-            onMouseOver={(e) => (e.target.style.transform = "scale(1.02)")}
-            onMouseOut={(e) => (e.target.style.transform = "scale(1)")}
-          >
-            👤 Organizer Token
-          </button>
-          <button
-            onClick={usePlayerToken}
-            style={{
-              flex: 1,
-              padding: "12px 20px",
-              background: "rgba(255,255,255,0.2)",
-              color: "white",
-              border: "1px solid white",
-              borderRadius: 8,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "transform 0.2s",
-            }}
-            onMouseOver={(e) => (e.target.style.transform = "scale(1.02)")}
-            onMouseOut={(e) => (e.target.style.transform = "scale(1)")}
-          >
-            🎮 Player Token
-          </button>
+        <div style={{ color: "white" }}>
+          <h4 style={{ margin: "0 0 8px 0", fontSize: 16 }}>
+            {token ? "✅ Authenticated" : "⚠️ Authentication Required"}
+          </h4>
+          <p style={{ margin: 0, fontSize: 14, opacity: 0.95 }}>
+            {status}
+          </p>
         </div>
-        <p
-          style={{
-            fontSize: 12,
-            marginTop: 12,
-            color: "rgba(255,255,255,0.9)",
-            margin: "12px 0 0 0",
-          }}
-        >
-          <strong>Organizer:</strong> Create & manage matches |{" "}
-          <strong>Player:</strong> View live scores
-        </p>
       </div>
-
-      <details style={{ marginBottom: 12 }}>
-        <summary>Alternative: Manual Login</summary>
-        <div
-          style={{
-            padding: 12,
-            background: "#fef2f2",
-            border: "1px solid #ef4444",
-          }}
-        >
-          <label>
-            Email{" "}
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="email"
-            />
-          </label>
-          <label>
-            Password{" "}
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="password"
-            />
-          </label>
-          <button onClick={login}>Login</button>
-          <button onClick={register} style={{ marginLeft: 8 }}>
-            Register
-          </button>
-        </div>
-      </details>
 
       <form
         onSubmit={createMatch}
@@ -326,7 +198,7 @@ function PlayerEntry({ onCreated, onUserSet }) {
         }}
       >
         <h4 style={{ margin: "0 0 20px 0", color: "#1e293b", fontSize: 16 }}>
-          ⚙️ Step 2: Match Configuration
+          ⚙️ Match Configuration
         </h4>
 
         <div style={{ marginBottom: 16 }}>

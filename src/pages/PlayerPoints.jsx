@@ -225,8 +225,18 @@ function PlayerPoints({ matchId: propMatchId, token }) {
   const groupPlayersByTeam = (players) => {
     if (!players || players.length === 0) {
       return {
-        team1: { teamName: "Team 1", totalPoints: 0, players: [] },
-        team2: { teamName: "Team 2", totalPoints: 0, players: [] },
+        team1: {
+          teamName: "Team 1",
+          totalPoints: 0,
+          totalValue: 0,
+          players: [],
+        },
+        team2: {
+          teamName: "Team 2",
+          totalPoints: 0,
+          totalValue: 0,
+          players: [],
+        },
       };
     }
 
@@ -240,12 +250,20 @@ function PlayerPoints({ matchId: propMatchId, token }) {
           (sum, p) => sum + (p.totalPoints || p.points?.total || 0),
           0
         ),
+        totalValue: team1Players.reduce(
+          (sum, p) => sum + (p.totalValue || p.values?.total || 0),
+          0
+        ),
         players: team1Players,
       },
       team2: {
         teamName: team2Players[0]?.teamName || "Team 2",
         totalPoints: team2Players.reduce(
           (sum, p) => sum + (p.totalPoints || p.points?.total || 0),
+          0
+        ),
+        totalValue: team2Players.reduce(
+          (sum, p) => sum + (p.totalValue || p.values?.total || 0),
           0
         ),
         players: team2Players,
@@ -278,10 +296,32 @@ function PlayerPoints({ matchId: propMatchId, token }) {
   const renderPlayerRow = (player) => {
     // Handle both preview and pushed data formats
     const totalPoints = player.totalPoints || player.points?.total || 0;
+    const totalValue = player.totalValue || player.values?.total || 0;
     const categoryPoints = player.categoryPoints || player.points || {};
-    const battingStats = player.battingStats || player.stats?.batting || {};
-    const bowlingStats = player.bowlingStats || player.stats?.bowling || {};
-    const fieldingStats = player.fieldingStats || player.stats?.fielding || {};
+    const categoryValues = player.categoryValues || player.values || {};
+
+    // Handle stats - they might be objects or strings
+    const battingStats =
+      typeof player.battingStats === "object" && player.battingStats !== null
+        ? player.battingStats
+        : typeof player.stats?.batting === "object" &&
+          player.stats?.batting !== null
+        ? player.stats.batting
+        : {};
+    const bowlingStats =
+      typeof player.bowlingStats === "object" && player.bowlingStats !== null
+        ? player.bowlingStats
+        : typeof player.stats?.bowling === "object" &&
+          player.stats?.bowling !== null
+        ? player.stats.bowling
+        : {};
+    const fieldingStats =
+      typeof player.fieldingStats === "object" && player.fieldingStats !== null
+        ? player.fieldingStats
+        : typeof player.stats?.fielding === "object" &&
+          player.stats?.fielding !== null
+        ? player.stats.fielding
+        : {};
 
     return (
       <tr
@@ -336,6 +376,13 @@ function PlayerPoints({ matchId: propMatchId, token }) {
               0
             ).toFixed(1)}
           </strong>
+          <div className="value-display">
+            {(
+              categoryValues.battingValue ||
+              categoryValues.batting ||
+              0
+            ).toLocaleString()}
+          </div>
         </td>
         <td className="points-cell bowling">
           <strong>
@@ -345,6 +392,13 @@ function PlayerPoints({ matchId: propMatchId, token }) {
               0
             ).toFixed(1)}
           </strong>
+          <div className="value-display">
+            {(
+              categoryValues.bowlingValue ||
+              categoryValues.bowling ||
+              0
+            ).toLocaleString()}
+          </div>
         </td>
         <td className="points-cell fielding">
           <strong>
@@ -355,10 +409,22 @@ function PlayerPoints({ matchId: propMatchId, token }) {
                 0)
             ).toFixed(1)}
           </strong>
+          <div className="value-display">
+            {(
+              (categoryValues.fieldingValue || categoryValues.fielding || 0) +
+              (categoryValues.wicketKeepingValue ||
+                categoryValues.wicketKeeping ||
+                0)
+            ).toLocaleString()}
+          </div>
         </td>
         <td className="total-points">
           <div className="total-points-value">{totalPoints.toFixed(1)}</div>
           <div className="points-label">PTS</div>
+          <div className="total-value-display">
+            {(totalValue || 0).toLocaleString()}
+          </div>
+          <div className="value-label">VALUE</div>
         </td>
       </tr>
     );
@@ -368,8 +434,13 @@ function PlayerPoints({ matchId: propMatchId, token }) {
     <div className="team-section">
       <div className="team-header">
         <h3>{team.teamName}</h3>
-        <div className="team-total">
-          Total Points: <span>{team.totalPoints.toFixed(1)}</span>
+        <div className="team-totals">
+          <div className="team-total">
+            Total Points: <span>{team.totalPoints.toFixed(1)}</span>
+          </div>
+          <div className="team-total-value">
+            Total Value: <span>{(team.totalValue || 0).toLocaleString()}</span>
+          </div>
         </div>
       </div>
 
@@ -384,7 +455,7 @@ function PlayerPoints({ matchId: propMatchId, token }) {
               <th className="section-header bowling-header">Bowling</th>
               <th className="section-header fielding-header">Fielding</th>
               <th colSpan="3" className="section-header points-header">
-                Fantasy Points
+                Points / Value
               </th>
               <th rowSpan="2" className="total-header">
                 Total

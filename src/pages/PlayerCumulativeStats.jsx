@@ -75,17 +75,23 @@ function PlayerCumulativeStats({ playerId: propPlayerId, token }) {
         totalMatches: 0,
         totalPoints: 0,
         averagePoints: 0,
+        totalValue: 0,
+        averageValue: 0,
         totalRuns: 0,
         totalWickets: 0,
         highestScore: 0,
       };
     }
 
+    const totalValue = matches.reduce((sum, m) => sum + (m.totalValue || 0), 0);
+
     return {
       totalMatches: matches.length,
       totalPoints: matches.reduce((sum, m) => sum + m.totalPoints, 0),
       averagePoints:
         matches.reduce((sum, m) => sum + m.totalPoints, 0) / matches.length,
+      totalValue: totalValue,
+      averageValue: totalValue / matches.length,
       totalRuns: matches.reduce((sum, m) => sum + m.battingStats.runs, 0),
       totalWickets: matches.reduce((sum, m) => sum + m.bowlingStats.wickets, 0),
       highestScore: Math.max(...matches.map((m) => m.totalPoints), 0),
@@ -132,6 +138,40 @@ function PlayerCumulativeStats({ playerId: propPlayerId, token }) {
                 {selectedTournament === "all"
                   ? stats.averagePoints?.toFixed(1)
                   : stats.averagePoints.toFixed(1)}
+              </div>
+              <div className="stat-label">Per Match</div>
+            </div>
+          </div>
+
+          {/* Total Value Card */}
+          <div className="stat-card primary">
+            <div className="stat-icon">💰</div>
+            <div className="stat-content">
+              <h3>Total Value</h3>
+              <div className="stat-value">
+                {selectedTournament === "all"
+                  ? (stats.totalValue || 0).toLocaleString()
+                  : stats.totalValue?.toLocaleString() || "0"}
+              </div>
+              <div className="stat-label">
+                Across{" "}
+                {selectedTournament === "all"
+                  ? stats.totalMatchesPushed
+                  : stats.totalMatches}{" "}
+                matches
+              </div>
+            </div>
+          </div>
+
+          {/* Average Value Card */}
+          <div className="stat-card">
+            <div className="stat-icon">📈</div>
+            <div className="stat-content">
+              <h3>Average Value</h3>
+              <div className="stat-value">
+                {selectedTournament === "all"
+                  ? (stats.averageValue || 0).toLocaleString()
+                  : stats.averageValue?.toLocaleString() || "0"}
               </div>
               <div className="stat-label">Per Match</div>
             </div>
@@ -263,6 +303,9 @@ function PlayerCumulativeStats({ playerId: propPlayerId, token }) {
                   <div className="match-points">
                     <strong>{match.points.toFixed(1)}</strong> pts
                   </div>
+                  <div className="match-value">
+                    <strong>{(match.value || 0).toLocaleString()}</strong> val
+                  </div>
                 </div>
               ))}
             </div>
@@ -351,18 +394,29 @@ function PlayerCumulativeStats({ playerId: propPlayerId, token }) {
                   <strong>
                     {match.categoryPoints.battingPoints.toFixed(1)}
                   </strong>
+                  <span className="value-badge">
+                    {(match.categoryValues?.battingValue || 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="points-row">
                   <span>Bowling Points:</span>
                   <strong>
                     {match.categoryPoints.bowlingPoints.toFixed(1)}
                   </strong>
+                  <span className="value-badge">
+                    {(match.categoryValues?.bowlingValue || 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="points-row">
                   <span>Fielding Points:</span>
                   <strong>
                     {match.categoryPoints.fieldingPoints.toFixed(1)}
                   </strong>
+                  <span className="value-badge">
+                    {(
+                      match.categoryValues?.fieldingValue || 0
+                    ).toLocaleString()}
+                  </span>
                 </div>
                 {match.categoryPoints.wicketKeepingPoints > 0 && (
                   <div className="points-row">
@@ -370,12 +424,23 @@ function PlayerCumulativeStats({ playerId: propPlayerId, token }) {
                     <strong>
                       {match.categoryPoints.wicketKeepingPoints.toFixed(1)}
                     </strong>
+                    <span className="value-badge">
+                      {(
+                        match.categoryValues?.wicketKeepingValue || 0
+                      ).toLocaleString()}
+                    </span>
                   </div>
                 )}
                 <div className="points-row total">
                   <span>Total Points:</span>
                   <strong className="total-value">
                     {match.totalPoints.toFixed(1)}
+                  </strong>
+                </div>
+                <div className="points-row total-value-row">
+                  <span>Total Value:</span>
+                  <strong className="total-value-display">
+                    {(match.totalValue || 0).toLocaleString()}
                   </strong>
                 </div>
               </div>

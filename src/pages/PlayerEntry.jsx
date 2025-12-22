@@ -27,7 +27,10 @@ function PlayerEntry({ onCreated, onUserSet }) {
   function getAuthHeaders() {
     const authToken = token || localStorage.getItem("authToken");
     return authToken
-      ? { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" }
+      ? {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        }
       : { "Content-Type": "application/json" };
   }
 
@@ -170,8 +173,8 @@ function PlayerEntry({ onCreated, onUserSet }) {
         style={{
           marginBottom: 24,
           padding: 20,
-          background: token 
-            ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" 
+          background: token
+            ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
             : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
           borderRadius: 12,
           boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
@@ -181,9 +184,7 @@ function PlayerEntry({ onCreated, onUserSet }) {
           <h4 style={{ margin: "0 0 8px 0", fontSize: 16 }}>
             {token ? "✅ Authenticated" : "⚠️ Authentication Required"}
           </h4>
-          <p style={{ margin: 0, fontSize: 14, opacity: 0.95 }}>
-            {status}
-          </p>
+          <p style={{ margin: 0, fontSize: 14, opacity: 0.95 }}>{status}</p>
         </div>
       </div>
 

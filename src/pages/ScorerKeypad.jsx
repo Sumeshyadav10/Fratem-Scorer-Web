@@ -123,6 +123,14 @@ const PlayerSelectionForm = ({
   const battingTeamPlayers = getBattingTeamPlayers();
   const bowlingTeamPlayers = getBowlingTeamPlayers();
 
+  // Helper function to check if a player is a wicket keeper
+  const isWicketKeeper = (playerId) => {
+    if (!match) return false;
+    const team1Keeper = match.teams?.team1?.wicketKeeper?.playerId;
+    const team2Keeper = match.teams?.team2?.wicketKeeper?.playerId;
+    return playerId === team1Keeper || playerId === team2Keeper;
+  };
+
   // Reset player selections when teams change
   const handleBattingTeamChange = (teamId) => {
     setSelectedBattingTeam(teamId);
@@ -347,6 +355,7 @@ const PlayerSelectionForm = ({
                 {(battingTeamPlayers || []).map((player) => (
                   <option key={player.playerId} value={player.playerId}>
                     {player.playerName}
+                    {isWicketKeeper(player.playerId) && " 🧤 (WK)"}
                   </option>
                 ))}
               </select>
@@ -377,6 +386,7 @@ const PlayerSelectionForm = ({
                 {(battingTeamPlayers || []).map((player) => (
                   <option key={player.playerId} value={player.playerId}>
                     {player.playerName}
+                    {isWicketKeeper(player.playerId) && " 🧤 WK"}
                   </option>
                 ))}
               </select>
@@ -407,6 +417,7 @@ const PlayerSelectionForm = ({
                 {(bowlingTeamPlayers || []).map((player) => (
                   <option key={player.playerId} value={player.playerId}>
                     {player.playerName}
+                    {isWicketKeeper(player.playerId) && " 🧤 WK"}
                   </option>
                 ))}
               </select>
@@ -549,6 +560,14 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
     "hit-wicket",
     "caught-and-bowled",
   ];
+
+  // Helper function to check if a player is a wicket keeper
+  const isWicketKeeper = (playerId) => {
+    if (!match) return false;
+    const team1Keeper = match.teams?.team1?.wicketKeeper?.playerId;
+    const team2Keeper = match.teams?.team2?.wicketKeeper?.playerId;
+    return playerId === team1Keeper || playerId === team2Keeper;
+  };
 
   // Global error management functions
   const addGlobalError = (message, type = "error", retryAction = null) => {
@@ -4376,6 +4395,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   .map((player) => (
                     <option key={player.playerId} value={player.playerId}>
                       {player.playerName}
+                      {isWicketKeeper(player.playerId) && " 🧤 WK"}
                     </option>
                   ));
               })()}
@@ -4495,6 +4515,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 return players.map((player) => (
                   <option key={player.playerId} value={player.playerId}>
                     {player.playerName}
+                    {isWicketKeeper(player.playerId) && " 🧤 WK"}
                   </option>
                 ));
               })()}
@@ -4694,6 +4715,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 return players.map((player) => (
                   <option key={player.playerId} value={player.playerId}>
                     {player.playerName}
+                    {isWicketKeeper(player.playerId) && " 🧤 WK"}
                   </option>
                 ));
               })()}
@@ -4733,6 +4755,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   .map((player) => (
                     <option key={player.playerId} value={player.playerId}>
                       {player.playerName}
+                      {isWicketKeeper(player.playerId) && " 🧤 WK"}
                     </option>
                   ));
               })()}
@@ -5267,6 +5290,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                       .map((player) => (
                         <option key={player.playerId} value={player.playerId}>
                           {player.playerName}
+                          {isWicketKeeper(player.playerId) && " 🧤 WK"}
                         </option>
                       ));
                   })()

@@ -498,6 +498,8 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
   const [status, setStatus] = useState("Loading...");
   const [isConnected, setIsConnected] = useState(false);
   const [liveUpdates, setLiveUpdates] = useState([]);
+  // Recent points awarded (temporary, immediate feedback)
+  const [recentPoints, setRecentPoints] = useState([]);
 
   // Global error notification system
   const [globalErrors, setGlobalErrors] = useState([]);
@@ -887,22 +889,48 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         }
       );
 
-      if (!response.ok) {
+      const serverResp = await response.json().catch(() => null);
+      if (!response.ok || !serverResp || !serverResp.success) {
         console.warn(
           "Failed to update match completion on server, but showing result locally"
         );
+        // Show local result as fallback
+        setMatchResult(result);
+      } else {
+        // Use server's authoritative result (fixes tie vs 0-run-win mismatch)
+        const svcResult =
+          serverResp.data?.result || serverResp.data?.match || result;
+        // Normalize to expected client shape
+        const normalized = {
+          ...svcResult,
+          isTie: svcResult?.winType === "tie" || svcResult?.isTie || false,
+          description:
+            svcResult?.matchSummary ||
+            svcResult?.description ||
+            svcResult?.summary ||
+            "",
+        };
+        setMatchResult(normalized);
       }
 
       setShowMatchComplete(true);
       setStatus(
-        `🏆 Match Complete! ${result?.description || "Match finished"}`
+        `🏆 Match Complete! ${
+          serverResp?.data?.result?.matchSummary ||
+          result?.description ||
+          "Match finished"
+        }`
       );
 
       setLiveUpdates((prev) => [
         ...prev,
         {
           type: "success",
-          message: `🏆 ${result?.description || "Match completed"}`,
+          message: `🏆 ${
+            serverResp?.data?.result?.matchSummary ||
+            result?.description ||
+            "Match completed"
+          }`,
           time: new Date(),
         },
       ]);
@@ -916,8 +944,56 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       addGlobalError(
         `Match completed but failed to save result: ${error.message}`,
         "api",
-        null
+        () => handleMatchCompletion(finalScore)
       );
+    }
+  };
+
+  // Start Super Over for tied matches
+  const startSuperOver = async () => {
+    try {
+      const canStartSuperOver =
+        matchResult?.isTie ||
+        match?.result?.status === "tied" ||
+        matchResult?.winType === "tie" ||
+        (matchResult?.description || "").toLowerCase().includes("tied") ||
+        (matchResult?.summary || "").toLowerCase().includes("tied");
+      if (!canStartSuperOver) return;
+
+      const confirm = window.confirm(
+        "Start Super Over? This will resume the match as a Super Over (innings 3)."
+      );
+      if (!confirm) return;
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/matches/${matchId}/super-over`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to start Super Over");
+      }
+
+      // Refresh match and UI
+      setShowMatchComplete(false);
+      setStatus("🔁 Super Over started");
+      setLiveUpdates((prev) => [
+        ...prev,
+        { type: "info", message: "🔁 Super Over started", time: new Date() },
+      ]);
+
+      // Fetch latest match state
+      await initializeScorer();
+    } catch (err) {
+      console.error("Error starting super over:", err);
+      addGlobalError(`Failed to start Super Over: ${err.message}`, "api");
     }
   };
 
@@ -1043,6 +1119,25 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
 
       const matchData = await matchResponse.json();
       setMatch(matchData.data.match);
+
+      // If match already completed on backend, set normalized matchResult so UI shows correct modal/button
+      if (matchData.data.match?.currentState?.status === "completed") {
+        const svcResult = matchData.data.match.result || {};
+        const normalized = {
+          ...svcResult,
+          isTie:
+            svcResult?.winType === "tie" ||
+            svcResult?.status === "tied" ||
+            false,
+          description:
+            svcResult?.matchSummary ||
+            svcResult?.description ||
+            svcResult?.summary ||
+            "",
+        };
+        setMatchResult(normalized);
+        setShowMatchComplete(true);
+      }
 
       // Use the backend's dynamic current score directly
       const backendScore = matchData.data.currentScore;
@@ -2254,6 +2349,80 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
             },
           ]);
 
+          // If stumping occurred, display immediate points awarded info
+          if (
+            ballData.wicket &&
+            ballData.wicket.isWicket &&
+            (ballData.wicket.wicketType || data.ball?.wicket?.wicketType) ===
+              "stumped"
+          ) {
+            const keeperName =
+              data.ball?.wicket?.fielder?.playerName ||
+              ballData.fielder?.playerName ||
+              "Wicket Keeper";
+            const bowlerName =
+              data.updatedPlayers?.bowler?.playerName ||
+              ballData.bowler?.playerName ||
+              "Bowler";
+
+            setLiveUpdates((prev) => [
+              ...prev,
+              {
+                type: "info",
+                message: `✅ Stumping credited: ${keeperName} (WK) +1 pt, ${bowlerName} +1 pt`,
+                time: new Date(),
+              },
+            ]);
+
+            // Update local status banner as well
+            setStatus(
+              `Stumping: ${keeperName} (WK) +1 pt, ${bowlerName} +1 pt`
+            );
+
+            // Add to recentPoints for quick frontend reflection
+            try {
+              const keeperId =
+                data.updatedPlayers?.fielder?.playerId ||
+                ballData.wicket?.fielder?.playerId ||
+                null;
+              const bowlerId =
+                data.updatedPlayers?.bowler?.playerId ||
+                ballData.bowler?.playerId ||
+                null;
+              const keeperPoints =
+                data.updatedPlayers?.fielder?.pointsAwarded?.stumpingBonus || 1;
+              const bowlerPoints =
+                data.updatedPlayers?.bowler?.pointsAwarded?.stumpingBonus || 1;
+
+              const entries = [];
+              if (keeperId) {
+                entries.push({
+                  playerId: keeperId,
+                  playerName: keeperName,
+                  points: keeperPoints,
+                  reason: "Stumping",
+                });
+              }
+              if (bowlerId) {
+                entries.push({
+                  playerId: bowlerId,
+                  playerName: bowlerName,
+                  points: bowlerPoints,
+                  reason: "Stumping",
+                });
+              }
+
+              if (entries.length) {
+                setRecentPoints((prev) => [
+                  ...entries,
+                  ...prev.slice(0, 9), // keep last 10
+                ]);
+              }
+            } catch (err) {
+              console.warn("Could not record recent points:", err.message);
+            }
+          }
+
           // Check for over completion (need new bowler selection)
           if (data.score) {
             const ballsInOver = data.score.balls % 6;
@@ -2490,15 +2659,58 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           return;
         }
 
-        // For stumped, ask for fielder (wicket-keeper) if not already set
+        // For stumped, auto-assign the wicket to the wicket-keeper (don't prompt a catch modal)
         if (currentBall.wicketType === "stumped" && !currentBall.fielder) {
-          setShowFielderSelection(true);
-          setPendingBallData({
-            currentBatsmen,
-            currentBowler,
-            isLastBallOfInnings,
-          });
-          return;
+          try {
+            const bowlingTeamId = match.currentState.bowlingTeam?.teamId;
+            const bowlingTeam =
+              match.teams.team1.teamId === bowlingTeamId
+                ? match.teams.team1
+                : match.teams.team2;
+
+            // Prefer the designated wicketKeeper object on team if available
+            const keeper = bowlingTeam?.wicketKeeper
+              ? bowlingTeam.wicketKeeper
+              : (bowlingTeam?.players || []).find((p) =>
+                  isWicketKeeper(p.playerId)
+                );
+
+            if (keeper) {
+              // Auto-assign fielder as keeper for stumping
+              const autoFielder = {
+                playerId: keeper.playerId,
+                playerName: keeper.playerName,
+              };
+              setCurrentBall((prev) => ({
+                ...prev,
+                fielder: autoFielder,
+                autoAssignedFielder: true,
+              }));
+              setStatus(`Auto-assigned wicket to keeper: ${keeper.playerName}`);
+              // continue to process ball (no modal)
+            } else {
+              // If no keeper found, fall back to asking for fielder
+              setShowFielderSelection(true);
+              setPendingBallData({
+                currentBatsmen,
+                currentBowler,
+                isLastBallOfInnings,
+              });
+              return;
+            }
+          } catch (err) {
+            console.warn(
+              "Failed to auto-assign keeper for stumping:",
+              err.message
+            );
+            setShowFielderSelection(true);
+            setPendingBallData({
+              currentBatsmen,
+              currentBowler,
+              isLastBallOfInnings,
+            });
+            return;
+          }
         }
       }
 
@@ -3594,7 +3806,14 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 </strong>
                 <br />
                 <span style={{ color: "#666" }}>
-                  RRR:{" "}
+                  <strong>CRR:</strong>{" "}
+                  {score.runRate !== undefined && score.runRate !== null
+                    ? Number(score.runRate).toFixed(2)
+                    : score.balls > 0
+                    ? (score.runs / (score.balls / 6)).toFixed(2)
+                    : "0.00"}
+                  {"  "}
+                  <strong>RRR:</strong>{" "}
                   {score.balls >= (match?.overs || 20) * 6
                     ? "0.00"
                     : (
@@ -4292,6 +4511,19 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   {update.message}
                 </div>
               ))}
+
+            {/* Recent points awarded (quick feedback) */}
+            {recentPoints.length > 0 && (
+              <div style={{ marginTop: 10, paddingTop: 8 }}>
+                <h6 style={{ margin: "6px 0", fontSize: 13 }}>Recent Points</h6>
+                {recentPoints.slice(0, 10).map((p, i) => (
+                  <div key={i} style={{ fontSize: 12, color: "#0b6efd" }}>
+                    +{p.points} pts — <strong>{p.playerName}</strong> (
+                    {p.reason})
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -4480,9 +4712,15 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
             }}
           >
             <h3 style={{ margin: "0 0 20px 0", color: "#dc3545" }}>
-              🏏 Caught Out!
+              {wicketBallData?.wicket?.wicketType === "stumped"
+                ? "🏏 Stumped!"
+                : "🏏 Caught Out!"}
             </h3>
-            <p>Select the fielder who took the catch:</p>
+            <p>
+              {wicketBallData?.wicket?.wicketType === "stumped"
+                ? "Select the wicket-keeper who completed the stumping:"
+                : "Select the fielder who took the catch:"}
+            </p>
 
             <select
               value={selectedFielder}
@@ -5511,13 +5749,24 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           >
             <h1
               style={{
-                color: matchResult.isTie ? "#ff8c00" : "#ff6b35",
+                color:
+                  matchResult?.isTie ||
+                  match?.result?.status === "tied" ||
+                  matchResult?.winType === "tie" ||
+                  (matchResult?.description || "")
+                    .toLowerCase()
+                    .includes("tied") ||
+                  (matchResult?.summary || "").toLowerCase().includes("tied")
+                    ? "#ff8c00"
+                    : "#ff6b35",
                 marginBottom: "20px",
                 fontSize: "32px",
                 textShadow: "2px 2px 4px rgba(0,0,0,0.1)",
               }}
             >
-              {matchResult.isTie
+              {matchResult?.isTie ||
+              match?.result?.status === "tied" ||
+              matchResult?.winType === "tie"
                 ? "🤝 MATCH TIED! 🤝"
                 : "🏆 MATCH COMPLETE! 🏆"}
             </h1>
@@ -5533,7 +5782,11 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   : "2px solid #ffc107",
               }}
             >
-              {matchResult.isTie ? (
+              {matchResult?.isTie ||
+              match?.result?.status === "tied" ||
+              matchResult?.winType === "tie" ||
+              (matchResult?.description || "").toLowerCase().includes("tied") ||
+              (matchResult?.summary || "").toLowerCase().includes("tied") ? (
                 <h2
                   style={{
                     margin: "0 0 15px 0",
@@ -5551,7 +5804,13 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                     fontSize: "28px",
                   }}
                 >
-                  🎉 {matchResult.winner} WINS! 🎉
+                  🎉{" "}
+                  {matchResult?.winner?.teamName ||
+                    (typeof matchResult?.winner === "string"
+                      ? matchResult.winner
+                      : match?.result?.winner?.teamName) ||
+                    "Winner"}{" "}
+                  WINS! 🎉
                 </h2>
               )}
               <p
@@ -5670,6 +5929,34 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
             <div
               style={{ display: "flex", gap: "15px", justifyContent: "center" }}
             >
+              {(matchResult?.isTie ||
+                match?.result?.status === "tied" ||
+                matchResult?.winType === "tie" ||
+                (matchResult?.description || "")
+                  .toLowerCase()
+                  .includes("tied") ||
+                (matchResult?.summary || "")
+                  .toLowerCase()
+                  .includes("tied")) && (
+                <button
+                  onClick={startSuperOver}
+                  style={{
+                    backgroundColor: "#ff8c00",
+                    color: "white",
+                    border: "none",
+                    padding: "12px 25px",
+                    borderRadius: "6px",
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    marginRight: "8px",
+                  }}
+                >
+                  🔁 Start Super Over
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   setShowMatchComplete(false);

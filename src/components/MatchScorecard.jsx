@@ -30,7 +30,33 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
       const data = await response.json();
 
       if (data.success) {
-        setMatchData(data.data);
+        // If fallOfWickets is missing from the match summary, fall back to live-match endpoint
+        let enrichedData = data.data;
+        if (
+          !enrichedData.fallOfWickets ||
+          enrichedData.fallOfWickets.length === 0
+        ) {
+          try {
+            console.debug(
+              "Falling back to /api/live-matches for fallOfWickets"
+            );
+            const liveRes = await fetch(
+              `${apiBaseUrl}/api/live-matches/${matchId}`
+            );
+            const liveJson = await liveRes.json();
+            if (liveJson && liveJson.success && liveJson.data?.match) {
+              enrichedData.fallOfWickets =
+                liveJson.data.match.fallOfWickets || [];
+            }
+          } catch (err) {
+            console.warn(
+              "Failed to fetch fallback live-match data:",
+              err.message
+            );
+          }
+        }
+
+        setMatchData(enrichedData);
       } else {
         setError(data.message || "Failed to fetch match data");
       }
@@ -93,6 +119,7 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
                 <th>Batsman</th>
                 <th>R</th>
                 <th>B</th>
+                <th>D</th>
                 <th>4s</th>
                 <th>6s</th>
                 <th>SR</th>
@@ -115,12 +142,15 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
                   </td>
                   <td className="runs">{player.runs}</td>
                   <td className="balls">{player.ballsFaced}</td>
+                  <td className="dots">{player.dots}</td>
                   <td className="fours">{player.fours}</td>
                   <td className="sixes">{player.sixes}</td>
                   <td className="strike-rate">
                     {formatStrikeRate(player.runs, player.ballsFaced)}
                   </td>
-                  <td className="status">{player.isOut ? "out" : "not out"}</td>
+                  <td className="status">
+                    {player.isOut ? player.dismissal || "out" : "not out"}
+                  </td>
                 </tr>
               ))}
 
@@ -128,7 +158,7 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
               <tr className="extras-row">
                 <td className="extras-label">{formatExtras(extras)}</td>
                 <td className="extras-value">{extras.total}</td>
-                <td colSpan="5"></td>
+                <td colSpan="6"></td>
               </tr>
 
               {/* Total row */}
@@ -142,7 +172,7 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
                 <td>
                   <strong>({formatOvers(score.overs)} ov)</strong>
                 </td>
-                <td colSpan="4"></td>
+                <td colSpan="5"></td>
               </tr>
             </tbody>
           </table>
@@ -151,9 +181,36 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
         {score.target && (
           <div className="target-info">
             <p>
-              Target: {score.target} | Required Rate:{" "}
-              {score.requiredRunRate || "N/A"}
+              <strong>Target:</strong> {score.target}
             </p>
+            {inningsNumber === 2 && (
+              <div className="chasing-info">
+                <span>
+                  <strong>Remaining balls:</strong>{" "}
+                  {(() => {
+                    const matchOvers = matchData?.matchInfo?.overs || 0;
+                    const totalBalls = Number(matchOvers) * 6;
+                    const remaining = Math.max(
+                      0,
+                      totalBalls - (score.balls || 0)
+                    );
+                    return remaining;
+                  })()}
+                </span>
+                <span>
+                  <strong>CRR:</strong>{" "}
+                  {(score.runRate || 0).toFixed
+                    ? (score.runRate || 0).toFixed(2)
+                    : score.runRate}
+                </span>
+                <span>
+                  <strong>RRR:</strong>{" "}
+                  {score.requiredRunRate
+                    ? Number(score.requiredRunRate).toFixed(2)
+                    : "N/A"}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -185,6 +242,7 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
                 <th>W</th>
                 <th>WD</th>
                 <th>NB</th>
+                <th>DB</th>
                 <th>Econ</th>
               </tr>
             </thead>
@@ -205,6 +263,7 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
                   <td className="wickets">{player.wickets}</td>
                   <td className="wides">{player.wides}</td>
                   <td className="no-balls">{player.noBalls}</td>
+                  <td className="dot-balls">{player.dotBalls}</td>
                   <td className="economy">{player.economyRate}</td>
                 </tr>
               ))}
@@ -227,11 +286,83 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
                 <td></td>
                 <td></td>
                 <td>
+                  <strong>{totals.dotBalls || 0}</strong>
+                </td>
+                <td>
                   <strong>{totals.economyRate}</strong>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    );
+  };
+
+  // --- Fall of Wickets Card ---
+  const formatOver = (overs, balls) => {
+    if (overs !== undefined && overs !== null) return overs;
+    if (!balls && balls !== 0) return "0";
+    // Convert balls to overs.ball format (e.g., 14 balls -> 2.2)
+    const completeOvers = Math.floor((balls || 0) / 6);
+    const remainder = (balls || 0) % 6;
+    return `${completeOvers}.${remainder}`;
+  };
+
+  const FallOfWicketsCard = ({ fallOfWickets = [], inningsNumber }) => {
+    const items = (fallOfWickets || []).filter(
+      (f) => f.innings === inningsNumber
+    );
+
+    return (
+      <div
+        id={`fall-of-wickets-innings-${inningsNumber}`}
+        className="fall-of-wickets-card"
+      >
+        <div className="card-header">
+          <h3>Fall of Wickets — Innings {inningsNumber}</h3>
+        </div>
+
+        <div className="fow-list">
+          {items.length === 0 ? (
+            <div className="fow-empty">
+              No fall of wickets recorded for this innings.
+            </div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Over</th>
+                  <th>Batsman</th>
+                  <th>Dismissal</th>
+                  <th>Bowler</th>
+                  <th>Fielder(s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((wicket, idx) => (
+                  <tr key={wicket._id?.$oid || idx}>
+                    <td>{wicket.wicketNumber ?? idx + 1}</td>
+                    <td>{formatOver(wicket.overs, wicket.balls)}</td>
+                    <td>{wicket.dismissedPlayer?.playerName || "-"}</td>
+                    <td>{wicket.dismissalType || "-"}</td>
+                    <td>{wicket.bowler?.playerName || "-"}</td>
+                    <td>
+                      {wicket.fielder?.playerName
+                        ? wicket.fielder.playerName +
+                          (wicket.assistFielder
+                            ? ` (assist: ${wicket.assistFielder.playerName})`
+                            : "")
+                        : wicket.assistFielder
+                        ? `Assist: ${wicket.assistFielder.playerName}`
+                        : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     );
@@ -323,6 +454,10 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
               inningsData={matchData.innings.innings1}
               inningsNumber={1}
             />
+            <FallOfWicketsCard
+              fallOfWickets={matchData.fallOfWickets}
+              inningsNumber={1}
+            />
           </>
         )}
 
@@ -334,6 +469,10 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
             />
             <BowlingCard
               inningsData={matchData.innings.innings2}
+              inningsNumber={2}
+            />
+            <FallOfWicketsCard
+              fallOfWickets={matchData.fallOfWickets}
               inningsNumber={2}
             />
           </>
@@ -382,6 +521,10 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
               inningsData={matchData.innings.innings1}
               inningsNumber={1}
             />
+            <FallOfWicketsCard
+              fallOfWickets={matchData.fallOfWickets}
+              inningsNumber={1}
+            />
           </>
         )}
         {activeTab === "innings2" && matchData.innings?.innings2 && (
@@ -392,6 +535,10 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
             />
             <BowlingCard
               inningsData={matchData.innings.innings2}
+              inningsNumber={2}
+            />
+            <FallOfWicketsCard
+              fallOfWickets={matchData.fallOfWickets}
               inningsNumber={2}
             />
           </>

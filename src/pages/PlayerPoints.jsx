@@ -147,10 +147,92 @@ function PlayerPoints({ matchId: propMatchId, token }) {
 
         // Group by teams for display
         const grouped = groupPlayersByTeam(data.data);
+        const allPlayers = data.data || [];
+
+        // helper to read category points from different response shapes
+        const getCategory = (p) => {
+          return p.categoryPoints || p.points?.byCategory || p.points || {};
+        };
+
+        // Create filtered & sorted top performer lists (exclude zero-scoring players)
+        const overall = [...allPlayers]
+          .filter((p) => (p.totalPoints ?? p.points?.total ?? 0) > 0)
+          .sort(
+            (a, b) =>
+              (b.totalPoints ?? b.points?.total ?? 0) -
+              (a.totalPoints ?? a.points?.total ?? 0)
+          )
+          .slice(0, 10);
+
+        const batsman = [...allPlayers]
+          .filter(
+            (p) =>
+              (getCategory(p).battingPoints ?? getCategory(p).batting ?? 0) > 0
+          )
+          .sort((a, b) => {
+            const pa = getCategory(a);
+            const pb = getCategory(b);
+            const diff =
+              (pb.battingPoints ?? pb.batting ?? 0) -
+              (pa.battingPoints ?? pa.batting ?? 0);
+            if (diff !== 0) return diff;
+            return (
+              (pb.totalPoints ?? pb.total ?? 0) -
+              (pa.totalPoints ?? pa.total ?? 0)
+            );
+          })
+          .slice(0, 10);
+
+        const bowler = [...allPlayers]
+          .filter(
+            (p) =>
+              (getCategory(p).bowlingPoints ?? getCategory(p).bowling ?? 0) > 0
+          )
+          .sort((a, b) => {
+            const pa = getCategory(a);
+            const pb = getCategory(b);
+            const diff =
+              (pb.bowlingPoints ?? pb.bowling ?? 0) -
+              (pa.bowlingPoints ?? pa.bowling ?? 0);
+            if (diff !== 0) return diff;
+            return (
+              (pb.totalPoints ?? pb.total ?? 0) -
+              (pa.totalPoints ?? pa.total ?? 0)
+            );
+          })
+          .slice(0, 10);
+
+        const fielder = [...allPlayers]
+          .filter((p) => {
+            const c = getCategory(p);
+            const val =
+              (c.fieldingPoints ?? c.fielding ?? 0) +
+              (c.wicketKeepingPoints ?? c.wicketKeeping ?? 0);
+            return val > 0;
+          })
+          .sort((a, b) => {
+            const ca = getCategory(a);
+            const cb = getCategory(b);
+            const va =
+              (ca.fieldingPoints ?? ca.fielding ?? 0) +
+              (ca.wicketKeepingPoints ?? ca.wicketKeeping ?? 0);
+            const vb =
+              (cb.fieldingPoints ?? cb.fielding ?? 0) +
+              (cb.wicketKeepingPoints ?? cb.wicketKeeping ?? 0);
+            if (vb !== va) return vb - va;
+            return (
+              (cb.totalPoints ?? cb.total ?? 0) -
+              (ca.totalPoints ?? ca.total ?? 0)
+            );
+          })
+          .slice(0, 10);
+
+        const topPerformers = { overall, batsman, bowler, fielder };
         setPointsData({
           match: { matchId, status: "preview" },
           teams: grouped,
           meta: data.meta,
+          topPerformers,
         });
       } else {
         setError(data.message || "Failed to fetch preview");
@@ -222,6 +304,10 @@ function PlayerPoints({ matchId: propMatchId, token }) {
     }
   };
 
+  // Helper to read category points from preview or stored formats
+  const readCategory = (p) =>
+    p.categoryPoints || p.points?.byCategory || p.points || {};
+
   const groupPlayersByTeam = (players) => {
     if (!players || players.length === 0) {
       return {
@@ -240,8 +326,12 @@ function PlayerPoints({ matchId: propMatchId, token }) {
       };
     }
 
-    const team1Players = players.filter((p) => p.teamId === players[0]?.teamId);
-    const team2Players = players.filter((p) => p.teamId !== players[0]?.teamId);
+    const team1Players = players.filter(
+      (p) => p.teamName === players[0]?.teamName
+    );
+    const team2Players = players.filter(
+      (p) => p.teamName !== players[0]?.teamName
+    );
 
     return {
       team1: {
@@ -419,7 +509,9 @@ function PlayerPoints({ matchId: propMatchId, token }) {
           </div>
         </td>
         <td className="total-points">
-          <div className="total-points-value">{totalPoints.toFixed(1)}</div>
+          <div className="total-points-value">
+            {(totalPoints ?? 0).toFixed(1)}
+          </div>
           <div className="points-label">PTS</div>
           <div className="total-value-display">
             {(totalValue || 0).toLocaleString()}
@@ -436,7 +528,7 @@ function PlayerPoints({ matchId: propMatchId, token }) {
         <h3>{team.teamName}</h3>
         <div className="team-totals">
           <div className="team-total">
-            Total Points: <span>{team.totalPoints.toFixed(1)}</span>
+            Total Points: <span>{(team.totalPoints ?? 0).toFixed(1)}</span>
           </div>
           <div className="team-total-value">
             Total Value: <span>{(team.totalValue || 0).toLocaleString()}</span>
@@ -478,8 +570,6 @@ function PlayerPoints({ matchId: propMatchId, token }) {
   );
 
   const renderTopPerformers = () => {
-    if (!pointsData?.topPerformers) return null;
-
     return (
       <div className="top-performers">
         <h3>🏆 Top Performers</h3>
@@ -488,68 +578,102 @@ function PlayerPoints({ matchId: propMatchId, token }) {
           <div className="performer-card">
             <h4>Overall Top 5</h4>
             <div className="performer-list">
-              {pointsData.topPerformers.overall
-                .slice(0, 5)
-                .map((player, idx) => (
-                  <div key={player.playerId} className="performer-item">
-                    <span className="rank">#{idx + 1}</span>
-                    <span className="name">{player.playerName}</span>
-                    <span className="points">
-                      {player.totalPoints.toFixed(1)}
-                    </span>
-                  </div>
-                ))}
+              {pointsData?.topPerformers?.overall?.length ? (
+                pointsData.topPerformers.overall
+                  .slice(0, 5)
+                  .map((player, idx) => (
+                    <div key={player.playerId} className="performer-item">
+                      <span className="rank">#{idx + 1}</span>
+                      <span className="name">{player.playerName}</span>
+                      <span className="points">
+                        {(
+                          player.totalPoints ??
+                          player.points?.total ??
+                          0
+                        ).toFixed(1)}
+                      </span>
+                    </div>
+                  ))
+              ) : (
+                <div className="no-performers">
+                  No overall performers with points.
+                </div>
+              )}
             </div>
           </div>
 
           <div className="performer-card">
             <h4>🏏 Top Batsmen</h4>
             <div className="performer-list">
-              {pointsData.topPerformers.batsman
-                .slice(0, 3)
-                .map((player, idx) => (
-                  <div key={player.playerId} className="performer-item">
-                    <span className="rank">#{idx + 1}</span>
-                    <span className="name">{player.playerName}</span>
-                    <span className="points batting">
-                      {player.categoryPoints.battingPoints.toFixed(1)}
-                    </span>
-                  </div>
-                ))}
+              {pointsData?.topPerformers?.batsman?.length ? (
+                pointsData.topPerformers.batsman
+                  .slice(0, 3)
+                  .map((player, idx) => {
+                    const cat = readCategory(player);
+                    return (
+                      <div key={player.playerId} className="performer-item">
+                        <span className="rank">#{idx + 1}</span>
+                        <span className="name">{player.playerName}</span>
+                        <span className="points batting">
+                          {(cat.battingPoints ?? cat.batting ?? 0).toFixed(1)}
+                        </span>
+                      </div>
+                    );
+                  })
+              ) : (
+                <div className="no-performers">No batsmen with points.</div>
+              )}
             </div>
           </div>
 
           <div className="performer-card">
             <h4>⚡ Top Bowlers</h4>
             <div className="performer-list">
-              {pointsData.topPerformers.bowler
-                .slice(0, 3)
-                .map((player, idx) => (
-                  <div key={player.playerId} className="performer-item">
-                    <span className="rank">#{idx + 1}</span>
-                    <span className="name">{player.playerName}</span>
-                    <span className="points bowling">
-                      {player.categoryPoints.bowlingPoints.toFixed(1)}
-                    </span>
-                  </div>
-                ))}
+              {pointsData?.topPerformers?.bowler?.length ? (
+                pointsData.topPerformers.bowler
+                  .slice(0, 3)
+                  .map((player, idx) => {
+                    const cat = readCategory(player);
+                    return (
+                      <div key={player.playerId} className="performer-item">
+                        <span className="rank">#{idx + 1}</span>
+                        <span className="name">{player.playerName}</span>
+                        <span className="points bowling">
+                          {(cat.bowlingPoints ?? cat.bowling ?? 0).toFixed(1)}
+                        </span>
+                      </div>
+                    );
+                  })
+              ) : (
+                <div className="no-performers">No bowlers with points.</div>
+              )}
             </div>
           </div>
 
           <div className="performer-card">
             <h4>🧤 Top Fielders</h4>
             <div className="performer-list">
-              {pointsData.topPerformers.fielder
-                .slice(0, 3)
-                .map((player, idx) => (
-                  <div key={player.playerId} className="performer-item">
-                    <span className="rank">#{idx + 1}</span>
-                    <span className="name">{player.playerName}</span>
-                    <span className="points fielding">
-                      {player.categoryPoints.fieldingPoints.toFixed(1)}
-                    </span>
-                  </div>
-                ))}
+              {pointsData?.topPerformers?.fielder?.length ? (
+                pointsData.topPerformers.fielder
+                  .slice(0, 3)
+                  .map((player, idx) => {
+                    const cat = readCategory(player);
+                    const value =
+                      (cat.fieldingPoints ?? cat.fielding ?? 0) +
+                      (cat.wicketKeepingPoints ?? cat.wicketKeeping ?? 0);
+                    return (
+                      <div key={player.playerId} className="performer-item">
+                        <span className="rank">#{idx + 1}</span>
+                        <span className="name">{player.playerName}</span>
+                        <span className="points fielding">
+                          {value.toFixed(1)}
+                        </span>
+                      </div>
+                    );
+                  })
+              ) : (
+                <div className="no-performers">No fielders with points.</div>
+              )}
             </div>
           </div>
         </div>
@@ -1009,13 +1133,21 @@ function PlayerPoints({ matchId: propMatchId, token }) {
 
             {activeTab === "team1" && pointsData.teams?.team1 && (
               <div className="team-tab">
-                {renderTeamTable(pointsData.teams.team1)}
+                {pointsData.teams.team1.players.length > 0 ? (
+                  renderTeamTable(pointsData.teams.team1)
+                ) : (
+                  <div className="no-data">No players in this team.</div>
+                )}
               </div>
             )}
 
             {activeTab === "team2" && pointsData.teams?.team2 && (
               <div className="team-tab">
-                {renderTeamTable(pointsData.teams.team2)}
+                {pointsData.teams.team2.players.length > 0 ? (
+                  renderTeamTable(pointsData.teams.team2)
+                ) : (
+                  <div className="no-data">No players in this team.</div>
+                )}
               </div>
             )}
 

@@ -4,7 +4,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background-color: #f8f9fa;
   min-height: 100vh;
 }
@@ -198,15 +198,26 @@
   margin-left: 5px;
 }
 
-.runs, .balls, .fours, .sixes {
+.runs,
+.balls,
+.fours,
+.sixes {
   font-weight: 600;
   text-align: center;
 }
 
-.strike-rate, .economy {
+.strike-rate,
+.economy {
   text-align: center;
   color: #007bff;
   font-weight: 600;
+}
+
+.dots,
+.dot-balls {
+  text-align: center;
+  font-weight: 600;
+  color: #6c757d;
 }
 
 .status {
@@ -255,13 +266,71 @@
   background: linear-gradient(135deg, #dc3545, #c82333);
 }
 
-.overs, .maidens, .wickets, .wides, .no-balls {
+.overs,
+.maidens,
+.wickets,
+.wides,
+.no-balls {
   text-align: center;
   font-weight: 600;
 }
 
 .wickets {
   color: #dc3545;
+}
+
+/* Fall of Wickets */
+.fall-of-wickets-card {
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.fall-of-wickets-card .card-header {
+  background: linear-gradient(135deg, #6f42c1, #7952b3);
+  color: white;
+  padding: 18px 22px;
+}
+
+.fow-list {
+  padding: 12px 18px 22px 18px;
+  overflow-x: auto;
+}
+
+.fow-list table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.fow-list th,
+.fow-list td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.fow-list th {
+  background: #f8f9fa;
+  font-weight: 700;
+}
+
+.fow-list td {
+  color: #495057;
+}
+
+.fow-empty {
+  padding: 18px 12px;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Allow visually focusing when linked via id */
+.fall-of-wickets-card:target {
+  outline: 3px solid rgba(111, 66, 193, 0.2);
+  box-shadow: 0 6px 28px rgba(111, 66, 193, 0.08);
 }
 
 /* Target Info */
@@ -272,6 +341,27 @@
   margin: 0;
   font-weight: 600;
   text-align: center;
+}
+
+/* Chasing info: remaining balls, CRR, RRR */
+.chasing-info {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.chasing-info span {
+  background: rgba(255, 255, 255, 0.8);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #212529;
+  font-weight: 700;
+}
+.chasing-info strong {
+  color: #111;
 }
 
 /* Error and Loading States */
@@ -326,8 +416,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Refresh Controls */
@@ -369,46 +463,46 @@
   .match-scorecard {
     padding: 10px;
   }
-  
+
   .match-header {
     padding: 20px 15px;
   }
-  
+
   .match-title h1 {
     font-size: 2rem;
   }
-  
+
   .match-details {
     gap: 15px;
   }
-  
+
   .tab-navigation {
     flex-direction: column;
     gap: 10px;
   }
-  
+
   .card-header {
     flex-direction: column;
     gap: 15px;
     text-align: center;
   }
-  
+
   .batting-table,
   .bowling-table {
     font-size: 0.85rem;
   }
-  
+
   .batting-table th,
   .bowling-table th,
   .batting-table td,
   .bowling-table td {
     padding: 10px 8px;
   }
-  
+
   .player-name {
     min-width: 120px;
   }
-  
+
   .refresh-controls {
     flex-direction: column;
     gap: 15px;
@@ -420,17 +514,17 @@
   .match-title h1 {
     font-size: 1.5rem;
   }
-  
+
   .batting-table,
   .bowling-table {
     font-size: 0.8rem;
   }
-  
+
   .score-summary {
     flex-direction: column;
     gap: 10px;
   }
-  
+
   .tab-button {
     padding: 12px 20px;
     font-size: 0.9rem;
@@ -443,12 +537,12 @@
     background: white;
     padding: 0;
   }
-  
+
   .tab-navigation,
   .refresh-controls {
     display: none;
   }
-  
+
   .batting-card,
   .bowling-card {
     break-inside: avoid;

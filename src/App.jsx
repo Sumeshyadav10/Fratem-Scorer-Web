@@ -8,6 +8,8 @@ import TeamLineup from "./pages/TeamLineup";
 import ScorecardTest from "./pages/ScorecardTest";
 import PlayerPoints from "./pages/PlayerPoints";
 import PlayerCumulativeStats from "./pages/PlayerCumulativeStats";
+import SDI from "./pages/SDI";
+import OSI from "./pages/OSI";
 import CompletedMatchScorecard from "./pages/CompletedMatchScorecard";
 import LineupSelection from "./components/LineupSelection";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -301,6 +303,12 @@ function App() {
           >
             📈 Player Stats
           </button>
+          <button onClick={() => setView("sdi")} className="sdi-nav-btn">
+            🔬 SDI
+          </button>
+          <button onClick={() => setView("osi")} className="osi-nav-btn">
+            🛡️ OSI
+          </button>
           <button
             onClick={() => setView("completed-scorecard")}
             className="completed-scorecard-nav-btn"
@@ -391,6 +399,18 @@ function App() {
         {view === "cumulative" && (
           <ErrorBoundary>
             <PlayerCumulativeStats token={token} />
+          </ErrorBoundary>
+        )}
+
+        {view === "sdi" && (
+          <ErrorBoundary>
+            <SDI />
+          </ErrorBoundary>
+        )}
+
+        {view === "osi" && (
+          <ErrorBoundary>
+            <OSI />
           </ErrorBoundary>
         )}
 

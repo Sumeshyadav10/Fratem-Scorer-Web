@@ -511,6 +511,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
   const [showMatchComplete, setShowMatchComplete] = useState(false);
   const [matchResult, setMatchResult] = useState(null);
   const [targetScore, setTargetScore] = useState(0);
+  const [recentBalls, setRecentBalls] = useState([]);
   const [currentBowlerStats, setCurrentBowlerStats] = useState(null);
 
   // New states for cricket scenarios
@@ -1399,6 +1400,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       });
 
       socketConnection.on("ball_event", (ballData) => {
+        // When a new ball is recorded or an event occurs, refresh recent balls
+        fetchRecentBalls();
+
         const totalRuns = ballData.runs?.total || 0;
         const batsmanRuns = ballData.runs?.batsman || 0;
         const extras = ballData.runs?.extras || 0;
@@ -1437,6 +1441,12 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         // No need to refresh - ball recording response already has updated stats
       });
 
+      // Fetch recent balls initially and whenever match changes
+      if (match && match.matchId) fetchRecentBalls();
+
+      // Note: listeners remain attached to the socketConnection here;
+      // socket cleanup is handled elsewhere via `socketRef.current.disconnect()`.
+
       socketConnection.on("match_state_change", (data) => {
         setLiveUpdates((prev) => [
           ...prev,
@@ -1451,6 +1461,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       // Listen for undo events
       socketConnection.on("ball_undone", (data) => {
         console.log("🔙 Received undo event:", data);
+
+        // Refresh recent balls to reflect undo
+        fetchRecentBalls();
 
         if (data.newScore) {
           const revertedScore = {
@@ -1491,61 +1504,25 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         matchId,
         timestamp: new Date().toISOString(),
       });
+    }
+  };
 
-      // Handle specific error types
-      if (error.message.includes("Failed to fetch match details")) {
-        setStatus(
-          "❌ Could not load match details. Please check your connection and try refreshing."
-        );
-        setLiveUpdates((prev) => [
-          ...prev,
-          {
-            type: "error",
-            message:
-              "🔴 Failed to load match details. Please refresh the page or check your connection.",
-            time: new Date(),
-          },
-        ]);
-      } else if (
-        error.name === "TypeError" &&
-        error.message.includes("fetch")
-      ) {
-        setStatus("❌ Network error. Please check your internet connection.");
-        setLiveUpdates((prev) => [
-          ...prev,
-          {
-            type: "error",
-            message:
-              "🌐 Network error. Please check your internet connection and try again.",
-            time: new Date(),
-          },
-        ]);
-      } else {
-        setStatus(`❌ Initialization error: ${error.message}`);
-        setLiveUpdates((prev) => [
-          ...prev,
-          {
-            type: "error",
-            message: `⚠️ Failed to initialize scorer: ${error.message}`,
-            time: new Date(),
-          },
-        ]);
+  // Fetch recent balls API helper
+  const fetchRecentBalls = async () => {
+    try {
+      if (!match?.matchId) return;
+      const resp = await fetch(
+        `${API_BASE_URL}/api/live-matches/${encodeURIComponent(
+          match.matchId
+        )}/recent-balls?limit=6`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await resp.json();
+      if (data && data.success) {
+        setRecentBalls(data.recentBalls || []);
       }
-
-      // Automatic retry after 5 seconds for network errors
-      if (error.name === "TypeError" || error.message.includes("fetch")) {
-        setTimeout(() => {
-          console.log("🔄 Auto-retrying scorer initialization...");
-          setStatus("🔄 Retrying connection...");
-          isInitializing.current = false; // Reset flag before retry
-          initializeScorer();
-        }, 5000);
-      }
-    } finally {
-      // Reset initialization flag
-      setTimeout(() => {
-        isInitializing.current = false;
-      }, 1000);
+    } catch (err) {
+      console.error("Failed to fetch recent balls:", err.message || err);
     }
   };
 
@@ -3674,6 +3651,75 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           <strong>Current Ball:</strong> Over {Math.floor(score.balls / 6) + 1},
           Ball {score.balls % 6}
         </p>
+
+        {/* Last 6 recorded balls */}
+        <div style={{ marginTop: 8 }}>
+          <strong>Last 6 Balls:</strong>
+          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+            {recentBalls && recentBalls.length > 0 ? (
+              recentBalls.map((b) => (
+                <div
+                  key={b.ballId}
+                  style={{
+                    border: "1px solid #e0e0e0",
+                    background: "#fafafa",
+                    padding: "6px 8px",
+                    borderRadius: 6,
+                    fontSize: 13,
+                    minWidth: 80,
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 12, color: "#666" }}>
+                    {b.displayOver}
+                  </div>
+                  <div style={{ fontWeight: "bold", marginTop: 4 }}>
+                    {b.isWicket ? "W" : b.runs?.total ?? "0"}
+                    {b.extras ? "e" : ""}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+                    {b.batsman?.playerName?.split(" ")[0] || "-"}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div style={{ color: "#666", fontSize: 13 }}>
+                No balls recorded yet
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Run rates - show CRR always, RRR when chasing */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-start",
+            gap: 20,
+            marginTop: 8,
+          }}
+        >
+          <div style={{ fontSize: 14, color: "#333" }}>
+            <strong>CRR:</strong>{" "}
+            {score.runRate !== undefined && score.runRate !== null
+              ? Number(score.runRate).toFixed(2)
+              : score.balls > 0
+              ? (score.runs / (score.balls / 6)).toFixed(2)
+              : "0.00"}
+          </div>
+
+          <div style={{ fontSize: 14, color: "#333" }}>
+            <strong>RRR:</strong>{" "}
+            {match?.currentState?.currentInnings === 2 && targetScore > 0
+              ? score.balls >= (match?.overs || 20) * 6
+                ? "0.00"
+                : (
+                    (targetScore - score.runs) /
+                    (((match?.overs || 20) * 6 - score.balls) / 6)
+                  ).toFixed(2)
+              : "N/A"}
+          </div>
+        </div>
 
         {/* Overs Limit Warning */}
         {(() => {

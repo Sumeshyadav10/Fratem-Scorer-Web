@@ -1441,12 +1441,6 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         // No need to refresh - ball recording response already has updated stats
       });
 
-      // Fetch recent balls initially and whenever match changes
-      if (match && match.matchId) fetchRecentBalls();
-
-      // Note: listeners remain attached to the socketConnection here;
-      // socket cleanup is handled elsewhere via `socketRef.current.disconnect()`.
-
       socketConnection.on("match_state_change", (data) => {
         setLiveUpdates((prev) => [
           ...prev,
@@ -1497,6 +1491,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
 
       socketRef.current = socketConnection;
       setSocket(socketConnection);
+
+      // Fetch recent balls initially
+      fetchRecentBalls();
     } catch (error) {
       console.error("🚨 Error initializing scorer:", {
         error: error.message,
@@ -1504,6 +1501,61 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         matchId,
         timestamp: new Date().toISOString(),
       });
+
+      // Handle specific error types
+      if (error.message.includes("Failed to fetch match details")) {
+        setStatus(
+          "❌ Could not load match details. Please check your connection and try refreshing."
+        );
+        setLiveUpdates((prev) => [
+          ...prev,
+          {
+            type: "error",
+            message:
+              "🔴 Failed to load match details. Please refresh the page or check your connection.",
+            time: new Date(),
+          },
+        ]);
+      } else if (
+        error.name === "TypeError" &&
+        error.message.includes("fetch")
+      ) {
+        setStatus("❌ Network error. Please check your internet connection.");
+        setLiveUpdates((prev) => [
+          ...prev,
+          {
+            type: "error",
+            message:
+              "🌐 Network error. Please check your internet connection and try again.",
+            time: new Date(),
+          },
+        ]);
+      } else {
+        setStatus(`❌ Initialization error: ${error.message}`);
+        setLiveUpdates((prev) => [
+          ...prev,
+          {
+            type: "error",
+            message: `⚠️ Failed to initialize scorer: ${error.message}`,
+            time: new Date(),
+          },
+        ]);
+      }
+
+      // Automatic retry after 5 seconds for network errors
+      if (error.name === "TypeError" || error.message.includes("fetch")) {
+        setTimeout(() => {
+          console.log("🔄 Auto-retrying scorer initialization...");
+          setStatus("🔄 Retrying connection...");
+          isInitializing.current = false; // Reset flag before retry
+          initializeScorer();
+        }, 5000);
+      }
+    } finally {
+      // Reset initialization flag
+      setTimeout(() => {
+        isInitializing.current = false;
+      }, 1000);
     }
   };
 

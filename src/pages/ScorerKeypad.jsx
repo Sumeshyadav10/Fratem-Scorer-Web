@@ -529,6 +529,22 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
   const [pendingBallData, setPendingBallData] = useState(null);
   const [wicketBallData, setWicketBallData] = useState(null); // Store ball data for wicket scenarios
 
+  // Super Over states
+  const [isSuperOver, setIsSuperOver] = useState(false);
+  const [superOverNumber, setSuperOverNumber] = useState(0);
+  const [superOverInnings, setSuperOverInnings] = useState(1);
+  const [superOverScore, setSuperOverScore] = useState({
+    runs: 0,
+    wickets: 0,
+    balls: 0,
+  });
+  const [superOverTarget, setSuperOverTarget] = useState(0);
+  const [showSuperOverPlayerSelection, setShowSuperOverPlayerSelection] =
+    useState(false);
+  const [showSuperOverInningsBreak, setShowSuperOverInningsBreak] =
+    useState(false);
+  const [superOverResult, setSuperOverResult] = useState(null);
+
   // Selection states for modals
   const [selectedRunOutBatsman, setSelectedRunOutBatsman] = useState("");
   const [selectedFielder, setSelectedFielder] = useState("");
@@ -958,11 +974,13 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         match?.result?.status === "tied" ||
         matchResult?.winType === "tie" ||
         (matchResult?.description || "").toLowerCase().includes("tied") ||
-        (matchResult?.summary || "").toLowerCase().includes("tied");
+        (matchResult?.summary || "").toLowerCase().includes("tied") ||
+        superOverResult?.isTie;
       if (!canStartSuperOver) return;
 
+      const superOverNum = (match?.superOvers?.length || 0) + 1;
       const confirm = window.confirm(
-        "Start Super Over? This will resume the match as a Super Over (innings 3)."
+        `Start Super Over #${superOverNum}? You will need to select players for both teams.`
       );
       if (!confirm) return;
 
@@ -982,19 +1000,259 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         throw new Error(data.message || "Failed to start Super Over");
       }
 
+      // Update super over state
+      setIsSuperOver(true);
+      setSuperOverNumber(superOverNum);
+      setSuperOverInnings(1);
+      setSuperOverScore({ runs: 0, wickets: 0, balls: 0 });
+      setSuperOverTarget(0);
+      setSuperOverResult(null);
+
       // Refresh match and UI
       setShowMatchComplete(false);
-      setStatus("🔁 Super Over started");
+      setStatus(`🔁 Super Over #${superOverNum} started - Select players`);
       setLiveUpdates((prev) => [
         ...prev,
-        { type: "info", message: "🔁 Super Over started", time: new Date() },
+        {
+          type: "info",
+          message: `🔁 Super Over #${superOverNum} started`,
+          time: new Date(),
+        },
       ]);
 
-      // Fetch latest match state
+      // Fetch latest match state and show player selection
       await initializeScorer();
+      setShowSuperOverPlayerSelection(true);
     } catch (err) {
       console.error("Error starting super over:", err);
       addGlobalError(`Failed to start Super Over: ${err.message}`, "api");
+    }
+  };
+
+  // Record ball in Super Over
+  const recordSuperOverBall = async (ballData) => {
+    try {
+      setStatus("Recording super over ball...");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/matches/${matchId}/super-over/ball`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(ballData),
+        }
+      );
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to record super over ball");
+      }
+
+      // Update super over score from response
+      const currentSO = data.data?.currentSuperOver;
+      const inningsData =
+        superOverInnings === 1 ? currentSO?.innings1 : currentSO?.innings2;
+
+      if (inningsData) {
+        setSuperOverScore({
+          runs: inningsData.runs || 0,
+          wickets: inningsData.wickets || 0,
+          balls: inningsData.balls || 0,
+        });
+      }
+
+      // Check if super over innings completed
+      if (data.data?.superOverInningsComplete) {
+        if (superOverInnings === 1) {
+          // First innings complete, show break modal
+          setSuperOverTarget(inningsData.runs + 1);
+          setShowSuperOverInningsBreak(true);
+        } else {
+          // Second innings complete, check result
+          await handleSuperOverComplete(data.data);
+        }
+      }
+
+      // Update match data
+      if (data.data?.match) {
+        setMatch(data.data.match);
+      }
+
+      setStatus("Super over ball recorded");
+      setLiveUpdates((prev) => [
+        ...prev,
+        {
+          type: "success",
+          message: "🔁 Super over ball recorded",
+          time: new Date(),
+        },
+      ]);
+
+      // Reset current ball state
+      setCurrentBall((prev) => ({
+        ...prev,
+        runs: 0,
+        ballType: "legal",
+        isWicket: false,
+        wicketType: "",
+        fielder: null,
+      }));
+
+      return data;
+    } catch (err) {
+      console.error("Error recording super over ball:", err);
+      setStatus(`Error: ${err.message}`);
+      addGlobalError(`Failed to record super over ball: ${err.message}`, "api");
+      throw err;
+    }
+  };
+
+  // Start Super Over Second Innings
+  const startSuperOverSecondInnings = async () => {
+    try {
+      setStatus("Starting super over second innings...");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/matches/${matchId}/super-over/second-innings`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(
+          data.message || "Failed to start super over second innings"
+        );
+      }
+
+      // Update state
+      setSuperOverInnings(2);
+      setSuperOverScore({ runs: 0, wickets: 0, balls: 0 });
+
+      const currentSO = data.data?.currentSuperOver;
+      if (currentSO?.innings2?.target) {
+        setSuperOverTarget(currentSO.innings2.target);
+      }
+
+      setShowSuperOverInningsBreak(false);
+      setShowSuperOverPlayerSelection(true);
+
+      // Update match
+      if (data.data?.match) {
+        setMatch(data.data.match);
+      }
+
+      setStatus("🔁 Super Over 2nd Innings - Select players");
+      setLiveUpdates((prev) => [
+        ...prev,
+        {
+          type: "info",
+          message: "🔁 Super Over 2nd Innings started",
+          time: new Date(),
+        },
+      ]);
+    } catch (err) {
+      console.error("Error starting super over second innings:", err);
+      addGlobalError(`Failed to start second innings: ${err.message}`, "api");
+    }
+  };
+
+  // Handle Super Over Complete
+  const handleSuperOverComplete = async (data) => {
+    const result = data.superOverResult || data.result;
+
+    if (result?.isTie) {
+      // Super over tied, offer another super over
+      setSuperOverResult({ ...result, isTie: true });
+      setStatus("🔁 Super Over Tied! Start another Super Over?");
+      setShowMatchComplete(true);
+    } else if (result?.winner) {
+      // Super over has a winner
+      setSuperOverResult(result);
+      setMatchResult({
+        ...result,
+        winType: "super-over",
+        description:
+          result.summary || `${result.winner.teamName} won by Super Over`,
+      });
+      setStatus(`🏆 ${result.winner.teamName} wins by Super Over!`);
+      setShowMatchComplete(true);
+    }
+
+    // Refresh match data
+    await initializeScorer();
+  };
+
+  // Handle Super Over Player Selection
+  const handleSuperOverPlayersSelected = async (
+    striker,
+    nonStriker,
+    bowler,
+    battingTeamId,
+    bowlingTeamId
+  ) => {
+    try {
+      setStatus("Setting super over players...");
+
+      // Update current players via the existing API
+      const response = await fetch(
+        `${API_BASE_URL}/api/live-matches/${matchId}/current-players`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            striker,
+            nonStriker,
+            bowler,
+            battingTeamId,
+            bowlingTeamId,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || "Failed to set super over players");
+      }
+
+      // Update local state
+      setCurrentStriker(striker);
+      setCurrentNonStriker(nonStriker);
+      setCurrentBowler(bowler);
+
+      setShowSuperOverPlayerSelection(false);
+      setShowPlayerSelection(false);
+
+      setStatus(
+        `🔁 Super Over ${
+          superOverInnings === 1 ? "1st" : "2nd"
+        } Innings - Ready to score`
+      );
+      setLiveUpdates((prev) => [
+        ...prev,
+        {
+          type: "success",
+          message: `🏏 Super over players set: ${striker.playerName}, ${nonStriker.playerName} vs ${bowler.playerName}`,
+          time: new Date(),
+        },
+      ]);
+
+      // Refresh match
+      await initializeScorer();
+    } catch (err) {
+      console.error("Error setting super over players:", err);
+      addGlobalError(`Failed to set players: ${err.message}`, "api");
     }
   };
 
@@ -1120,6 +1378,53 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
 
       const matchData = await matchResponse.json();
       setMatch(matchData.data.match);
+
+      // Check for Super Over state
+      const superOverState = matchData.data.match?.superOverState;
+      if (superOverState?.isActive) {
+        setIsSuperOver(true);
+        setSuperOverNumber(superOverState.currentSuperOverNumber || 1);
+        setSuperOverInnings(superOverState.currentInnings || 1);
+
+        // Get current super over data
+        const superOvers = matchData.data.match?.superOvers || [];
+        const currentSO = superOvers.find(
+          (so) => so.superOverNumber === superOverState.currentSuperOverNumber
+        );
+
+        if (currentSO) {
+          const inningsData =
+            superOverState.currentInnings === 1
+              ? currentSO.innings1
+              : currentSO.innings2;
+          setSuperOverScore({
+            runs: inningsData?.runs || 0,
+            wickets: inningsData?.wickets || 0,
+            balls: inningsData?.balls || 0,
+          });
+
+          if (
+            superOverState.currentInnings === 2 &&
+            currentSO.innings2?.target
+          ) {
+            setSuperOverTarget(currentSO.innings2.target);
+          }
+        }
+
+        // Check if we need player selection for super over
+        const hasPlayers =
+          matchData.data.match.currentState?.currentBatsmen?.striker &&
+          matchData.data.match.currentState?.currentBowler;
+        if (!hasPlayers) {
+          setShowSuperOverPlayerSelection(true);
+        }
+      } else {
+        setIsSuperOver(false);
+        setSuperOverNumber(0);
+        setSuperOverInnings(1);
+        setSuperOverScore({ runs: 0, wickets: 0, balls: 0 });
+        setSuperOverTarget(0);
+      }
 
       // If match already completed on backend, set normalized matchResult so UI shows correct modal/button
       if (matchData.data.match?.currentState?.status === "completed") {
@@ -1559,22 +1864,22 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
     }
   };
 
-  // Fetch recent balls API helper
+  // Fetch current over balls API helper
   const fetchRecentBalls = async () => {
     try {
       if (!match?.matchId) return;
       const resp = await fetch(
         `${API_BASE_URL}/api/live-matches/${encodeURIComponent(
           match.matchId
-        )}/recent-balls?limit=6`,
+        )}/current-over`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await resp.json();
       if (data && data.success) {
-        setRecentBalls(data.recentBalls || []);
+        setRecentBalls(data.balls || []);
       }
     } catch (err) {
-      console.error("Failed to fetch recent balls:", err.message || err);
+      console.error("Failed to fetch current over balls:", err.message || err);
     }
   };
 
@@ -2618,6 +2923,121 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         return;
       }
 
+      // SUPER OVER MODE - Use different ball limit (6 balls)
+      if (isSuperOver) {
+        const superOverMaxBalls = 6;
+        const currentSuperOverBalls = superOverScore.balls || 0;
+
+        if (currentSuperOverBalls >= superOverMaxBalls) {
+          setStatus("⚠️ Super Over innings complete!");
+          return;
+        }
+
+        // Get current batsman and bowler from match state
+        const currentBatsmen = match.currentState?.currentBatsmen;
+        const currentBowlerData = match.currentState?.currentBowler;
+
+        if (!currentBatsmen?.striker || !currentBatsmen?.nonStriker) {
+          setStatus("Error: No batsmen set for super over!");
+          setShowSuperOverPlayerSelection(true);
+          return;
+        }
+
+        if (!currentBowlerData) {
+          setStatus("Error: No bowler set for super over!");
+          setShowSuperOverPlayerSelection(true);
+          return;
+        }
+
+        // Build super over ball data
+        const ballType = currentBall.ballType || "legal";
+        const runsInput = currentBall.runs || 0;
+
+        // Calculate runs based on ball type
+        let totalRuns = runsInput;
+        let batsmanRuns = runsInput;
+        let extrasRuns = 0;
+
+        if (ballType === "wide" || ballType === "no-ball") {
+          totalRuns = 1 + runsInput;
+          extrasRuns = ballType === "wide" ? totalRuns : 1;
+          batsmanRuns = ballType === "wide" ? 0 : runsInput;
+        } else if (ballType === "bye" || ballType === "leg-bye") {
+          batsmanRuns = 0;
+          extrasRuns = runsInput;
+        }
+
+        const superOverBallData = {
+          ballType: ballType,
+          runs: {
+            total: totalRuns,
+            batsman: batsmanRuns,
+            extras: extrasRuns,
+            boundaries: {
+              four: runsInput === 4 && ballType === "legal",
+              six: runsInput === 6 && ballType === "legal",
+            },
+          },
+          batsman: {
+            playerId: currentBatsmen.striker.playerId,
+            playerName: currentBatsmen.striker.playerName,
+          },
+          nonStriker: {
+            playerId: currentBatsmen.nonStriker.playerId,
+            playerName: currentBatsmen.nonStriker.playerName,
+          },
+          bowler: {
+            playerId: currentBowlerData.playerId,
+            playerName: currentBowlerData.playerName,
+          },
+          wicket: currentBall.isWicket
+            ? {
+                isWicket: true,
+                wicketType: currentBall.wicketType,
+                dismissedPlayer: currentBall.wicket?.dismissedPlayer || {
+                  playerId: currentBatsmen.striker.playerId,
+                  playerName: currentBatsmen.striker.playerName,
+                },
+                fielder: currentBall.fielder || null,
+              }
+            : { isWicket: false },
+        };
+
+        // Handle wicket special cases for super over
+        if (
+          currentBall.isWicket &&
+          currentBall.wicketType === "run-out" &&
+          !currentBall.wicket?.dismissedPlayer
+        ) {
+          setShowRunOutSelection(true);
+          setPendingBallData({
+            currentBatsmen,
+            currentBowler: currentBowlerData,
+            isSuperOver: true,
+          });
+          return;
+        }
+
+        if (
+          currentBall.isWicket &&
+          currentBall.wicketType === "caught" &&
+          !currentBall.fielder
+        ) {
+          setShowFielderSelection(true);
+          setPendingBallData({
+            currentBatsmen,
+            currentBowler: currentBowlerData,
+            isSuperOver: true,
+          });
+          return;
+        }
+
+        // Record the super over ball
+        await recordSuperOverBall(superOverBallData);
+        return;
+      }
+
+      // NORMAL MATCH MODE
       // Get match overs limit (dynamic based on match configuration)
       const maxOvers = match.overs || 20;
       const maxBalls = maxOvers * 6;
@@ -3680,6 +4100,68 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           {Math.floor(score.balls / 6)}.{score.balls % 6} overs)
         </p>
 
+        {/* SUPER OVER SCORE DISPLAY */}
+        {isSuperOver && (
+          <div
+            style={{
+              background: "linear-gradient(135deg, #ff8c00 0%, #ffa500 100%)",
+              color: "white",
+              padding: "15px",
+              borderRadius: "10px",
+              marginTop: "10px",
+              marginBottom: "10px",
+              boxShadow: "0 4px 12px rgba(255, 140, 0, 0.3)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <span style={{ fontSize: "14px", opacity: 0.9 }}>
+                  🔁 Super Over #{superOverNumber} -{" "}
+                  {superOverInnings === 1 ? "1st" : "2nd"} Innings
+                </span>
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: "bold",
+                    marginTop: "5px",
+                  }}
+                >
+                  {superOverScore.runs}/{superOverScore.wickets}
+                  <span
+                    style={{
+                      fontSize: "16px",
+                      marginLeft: "8px",
+                      opacity: 0.9,
+                    }}
+                  >
+                    ({superOverScore.balls}/6 balls)
+                  </span>
+                </div>
+              </div>
+              {superOverInnings === 2 && superOverTarget > 0 && (
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ fontSize: "12px", opacity: 0.9 }}>Target</span>
+                  <div style={{ fontSize: "24px", fontWeight: "bold" }}>
+                    {superOverTarget}
+                  </div>
+                  <span style={{ fontSize: "12px" }}>
+                    Need: {Math.max(0, superOverTarget - superOverScore.runs)}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div style={{ marginTop: "10px", fontSize: "12px", opacity: 0.9 }}>
+              Balls remaining: {6 - superOverScore.balls}
+            </div>
+          </div>
+        )}
+
         {/* Show target for second innings */}
         {match?.currentState?.currentInnings === 2 && targetScore > 0 && (
           <p
@@ -3704,9 +4186,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           Ball {score.balls % 6}
         </p>
 
-        {/* Last 6 recorded balls */}
+        {/* Current Over Balls */}
         <div style={{ marginTop: 8 }}>
-          <strong>Last 6 Balls:</strong>
+          <strong>Current Over:</strong>
           <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
             {recentBalls && recentBalls.length > 0 ? (
               recentBalls.map((b) => (
@@ -3736,7 +4218,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
               ))
             ) : (
               <div style={{ color: "#666", fontSize: 13 }}>
-                No balls recorded yet
+                No balls in current over yet
               </div>
             )}
           </div>
@@ -6030,6 +6512,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
               {(matchResult?.isTie ||
                 match?.result?.status === "tied" ||
                 matchResult?.winType === "tie" ||
+                superOverResult?.isTie ||
                 (matchResult?.description || "")
                   .toLowerCase()
                   .includes("tied") ||
@@ -6039,7 +6522,8 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 <button
                   onClick={startSuperOver}
                   style={{
-                    backgroundColor: "#ff8c00",
+                    background:
+                      "linear-gradient(135deg, #ff8c00 0%, #ffa500 100%)",
                     color: "white",
                     border: "none",
                     padding: "12px 25px",
@@ -6049,9 +6533,13 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                     cursor: "pointer",
                     transition: "all 0.3s ease",
                     marginRight: "8px",
+                    boxShadow: "0 4px 12px rgba(255, 140, 0, 0.3)",
                   }}
                 >
-                  🔁 Start Super Over
+                  🔁 Start Super Over{" "}
+                  {match?.superOvers?.length > 0
+                    ? `#${(match?.superOvers?.length || 0) + 1}`
+                    : ""}
                 </button>
               )}
 
@@ -6122,6 +6610,204 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 🔄 New Match
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Super Over Player Selection Modal */}
+      {showSuperOverPlayerSelection && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1001,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "30px",
+              borderRadius: "15px",
+              maxWidth: "600px",
+              width: "90%",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxShadow: "0 8px 32px rgba(255, 140, 0, 0.4)",
+              border: "3px solid #ff8c00",
+            }}
+          >
+            <h2
+              style={{
+                color: "#ff8c00",
+                marginBottom: "20px",
+                textAlign: "center",
+              }}
+            >
+              🔁 Super Over #{superOverNumber} -{" "}
+              {superOverInnings === 1 ? "1st" : "2nd"} Innings
+            </h2>
+
+            <div
+              style={{
+                marginBottom: "20px",
+                textAlign: "center",
+                padding: "15px",
+                background: "#fff3e0",
+                borderRadius: "8px",
+              }}
+            >
+              <p style={{ margin: 0, fontSize: "14px", color: "#e65100" }}>
+                {superOverInnings === 1
+                  ? `Select 2 batsmen and 1 bowler for ${
+                      match?.currentState?.battingTeam?.teamName ||
+                      "batting team"
+                    }`
+                  : `Select 2 batsmen and 1 bowler for ${
+                      match?.currentState?.battingTeam?.teamName ||
+                      "batting team"
+                    } (Target: ${superOverTarget})`}
+              </p>
+            </div>
+
+            <PlayerSelectionForm
+              availableBatsmen={availableBatsmen}
+              availableBowlers={availableBowlers}
+              match={match}
+              autoPopulateTeams={true}
+              onPlayersSelected={handleSuperOverPlayersSelected}
+            />
+
+            <div style={{ textAlign: "center", marginTop: "15px" }}>
+              <button
+                onClick={() => setShowSuperOverPlayerSelection(false)}
+                style={{
+                  backgroundColor: "#6c757d",
+                  color: "white",
+                  border: "none",
+                  padding: "10px 25px",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Super Over Innings Break Modal */}
+      {showSuperOverInningsBreak && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1001,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "35px",
+              borderRadius: "15px",
+              maxWidth: "500px",
+              width: "90%",
+              textAlign: "center",
+              boxShadow: "0 8px 32px rgba(255, 140, 0, 0.4)",
+              border: "3px solid #ff8c00",
+            }}
+          >
+            <h2 style={{ color: "#ff8c00", marginBottom: "20px" }}>
+              🔁 Super Over 1st Innings Complete!
+            </h2>
+
+            <div
+              style={{
+                background: "linear-gradient(135deg, #ff8c00 0%, #ffa500 100%)",
+                color: "white",
+                padding: "25px",
+                borderRadius: "10px",
+                marginBottom: "25px",
+              }}
+            >
+              <h3
+                style={{ margin: "0 0 10px 0", fontSize: "16px", opacity: 0.9 }}
+              >
+                1st Innings Score
+              </h3>
+              <div style={{ fontSize: "36px", fontWeight: "bold" }}>
+                {superOverScore.runs}/{superOverScore.wickets}
+              </div>
+              <div style={{ fontSize: "14px", marginTop: "5px", opacity: 0.9 }}>
+                ({superOverScore.balls} balls)
+              </div>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: "#e7f3ff",
+                padding: "20px",
+                borderRadius: "8px",
+                marginBottom: "25px",
+                border: "2px solid #0066cc",
+              }}
+            >
+              <h3 style={{ margin: "0 0 10px 0", color: "#0066cc" }}>
+                🎯 Target for 2nd Innings
+              </h3>
+              <div
+                style={{
+                  fontSize: "32px",
+                  fontWeight: "bold",
+                  color: "#0066cc",
+                }}
+              >
+                {superOverTarget} runs
+              </div>
+              <div
+                style={{ fontSize: "14px", color: "#666", marginTop: "5px" }}
+              >
+                in 6 balls
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <p style={{ fontSize: "14px", color: "#666" }}>
+                🔄 Teams will now swap roles for Super Over 2nd Innings
+              </p>
+            </div>
+
+            <button
+              onClick={startSuperOverSecondInnings}
+              style={{
+                background: "linear-gradient(135deg, #ff8c00 0%, #ffa500 100%)",
+                color: "white",
+                border: "none",
+                padding: "15px 35px",
+                borderRadius: "8px",
+                fontSize: "18px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                boxShadow: "0 4px 12px rgba(255, 140, 0, 0.3)",
+              }}
+            >
+              🚀 Start Super Over 2nd Innings
+            </button>
           </div>
         </div>
       )}

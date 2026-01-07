@@ -470,6 +470,441 @@ const CompletedMatchScorecard = ({ matchId: propMatchId, onBack }) => {
     );
   };
 
+  // Render Super Over Section
+  const renderSuperOverSection = () => {
+    const superOvers =
+      scorecardData?.superOvers || scorecardData?.scorecard?.superOvers;
+    if (!superOvers || superOvers.length === 0) return null;
+
+    return (
+      <div className="super-over-section" style={{ marginTop: "30px" }}>
+        <h2
+          style={{
+            color: "#ff8c00",
+            borderBottom: "3px solid #ff8c00",
+            paddingBottom: "10px",
+            marginBottom: "20px",
+          }}
+        >
+          🔁 Super Over{superOvers.length > 1 ? "s" : ""} ({superOvers.length})
+        </h2>
+
+        {superOvers.map((so, soIndex) => (
+          <div
+            key={soIndex}
+            style={{
+              background: "linear-gradient(135deg, #fff5e6 0%, #ffe6cc 100%)",
+              border: "2px solid #ff8c00",
+              borderRadius: "12px",
+              padding: "20px",
+              marginBottom: "20px",
+            }}
+          >
+            {/* Super Over Header */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "20px",
+                borderBottom: "1px solid #ffcc80",
+                paddingBottom: "15px",
+              }}
+            >
+              <h3 style={{ margin: 0, color: "#e65100" }}>
+                Super Over #{so.superOverNumber || soIndex + 1}
+              </h3>
+              <span
+                style={{
+                  background:
+                    so.status === "completed"
+                      ? "#4caf50"
+                      : so.status === "tied"
+                      ? "#ff8c00"
+                      : "#2196f3",
+                  color: "white",
+                  padding: "5px 12px",
+                  borderRadius: "20px",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  textTransform: "uppercase",
+                }}
+              >
+                {so.status || "In Progress"}
+              </span>
+            </div>
+
+            {/* Result Summary */}
+            {so.result?.summary && (
+              <div
+                style={{
+                  background: "#4caf50",
+                  color: "white",
+                  padding: "12px 20px",
+                  borderRadius: "8px",
+                  marginBottom: "20px",
+                  fontWeight: "bold",
+                  textAlign: "center",
+                }}
+              >
+                🏆 {so.result.summary}
+              </div>
+            )}
+
+            {/* First Innings */}
+            <div style={{ marginBottom: "20px" }}>
+              <div
+                style={{
+                  background: "white",
+                  borderRadius: "8px",
+                  padding: "15px",
+                  border: "1px solid #e0e0e0",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "15px",
+                  }}
+                >
+                  <h4 style={{ margin: 0, color: "#2e7d32" }}>
+                    1st Innings - {so.battingFirstTeam?.teamName || "Team 1"}
+                  </h4>
+                  <span
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      color: "#333",
+                    }}
+                  >
+                    {so.innings1?.runs || 0}/{so.innings1?.wickets || 0}
+                    <span
+                      style={{
+                        fontSize: "14px",
+                        color: "#666",
+                        marginLeft: "8px",
+                      }}
+                    >
+                      ({so.innings1?.balls || 0} balls)
+                    </span>
+                  </span>
+                </div>
+
+                {/* Batsmen Stats */}
+                {so.innings1?.batsmen && so.innings1.batsmen.length > 0 && (
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #e0e0e0" }}>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: "8px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          Batsman
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "center",
+                            padding: "8px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          R
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "center",
+                            padding: "8px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          B
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "center",
+                            padding: "8px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          4s
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "center",
+                            padding: "8px",
+                            fontSize: "12px",
+                          }}
+                        >
+                          6s
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {so.innings1.batsmen.map((bat, idx) => (
+                        <tr
+                          key={idx}
+                          style={{ borderBottom: "1px solid #f0f0f0" }}
+                        >
+                          <td style={{ padding: "8px" }}>
+                            {bat.playerName}
+                            {bat.isOut && (
+                              <span
+                                style={{
+                                  color: "#d32f2f",
+                                  marginLeft: "5px",
+                                  fontSize: "11px",
+                                }}
+                              >
+                                ({bat.dismissalType || "out"})
+                              </span>
+                            )}
+                          </td>
+                          <td
+                            style={{
+                              textAlign: "center",
+                              fontWeight: "bold",
+                              color: "#ff8c00",
+                            }}
+                          >
+                            {bat.runs || 0}
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            {bat.balls || 0}
+                          </td>
+                          <td style={{ textAlign: "center", color: "#1976d2" }}>
+                            {bat.fours || 0}
+                          </td>
+                          <td style={{ textAlign: "center", color: "#7b1fa2" }}>
+                            {bat.sixes || 0}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* Bowler Stats */}
+                {so.innings1?.bowler && (
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      color: "#666",
+                      padding: "8px",
+                      background: "#f5f5f5",
+                      borderRadius: "4px",
+                    }}
+                  >
+                    <strong>Bowler:</strong> {so.innings1.bowler.playerName} -
+                    0.{so.innings1.bowler.balls || 0} |{" "}
+                    {so.innings1.bowler.runs || 0}-
+                    {so.innings1.bowler.wickets || 0}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Second Innings */}
+            {so.innings2 &&
+              (so.innings2.balls > 0 ||
+                so.innings2.runs > 0 ||
+                so.innings2.target > 0) && (
+                <div>
+                  <div
+                    style={{
+                      background: "white",
+                      borderRadius: "8px",
+                      padding: "15px",
+                      border: "1px solid #e0e0e0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "15px",
+                      }}
+                    >
+                      <div>
+                        <h4 style={{ margin: 0, color: "#c62828" }}>
+                          2nd Innings -{" "}
+                          {so.battingSecondTeam?.teamName || "Team 2"}
+                        </h4>
+                        {so.innings2.target > 0 && (
+                          <span style={{ fontSize: "12px", color: "#666" }}>
+                            Target: {so.innings2.target}
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: "24px",
+                          fontWeight: "bold",
+                          color: "#333",
+                        }}
+                      >
+                        {so.innings2?.runs || 0}/{so.innings2?.wickets || 0}
+                        <span
+                          style={{
+                            fontSize: "14px",
+                            color: "#666",
+                            marginLeft: "8px",
+                          }}
+                        >
+                          ({so.innings2?.balls || 0} balls)
+                        </span>
+                      </span>
+                    </div>
+
+                    {/* Batsmen Stats */}
+                    {so.innings2?.batsmen && so.innings2.batsmen.length > 0 && (
+                      <table
+                        style={{
+                          width: "100%",
+                          borderCollapse: "collapse",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid #e0e0e0" }}>
+                            <th
+                              style={{
+                                textAlign: "left",
+                                padding: "8px",
+                                fontSize: "12px",
+                              }}
+                            >
+                              Batsman
+                            </th>
+                            <th
+                              style={{
+                                textAlign: "center",
+                                padding: "8px",
+                                fontSize: "12px",
+                              }}
+                            >
+                              R
+                            </th>
+                            <th
+                              style={{
+                                textAlign: "center",
+                                padding: "8px",
+                                fontSize: "12px",
+                              }}
+                            >
+                              B
+                            </th>
+                            <th
+                              style={{
+                                textAlign: "center",
+                                padding: "8px",
+                                fontSize: "12px",
+                              }}
+                            >
+                              4s
+                            </th>
+                            <th
+                              style={{
+                                textAlign: "center",
+                                padding: "8px",
+                                fontSize: "12px",
+                              }}
+                            >
+                              6s
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {so.innings2.batsmen.map((bat, idx) => (
+                            <tr
+                              key={idx}
+                              style={{ borderBottom: "1px solid #f0f0f0" }}
+                            >
+                              <td style={{ padding: "8px" }}>
+                                {bat.playerName}
+                                {bat.isOut && (
+                                  <span
+                                    style={{
+                                      color: "#d32f2f",
+                                      marginLeft: "5px",
+                                      fontSize: "11px",
+                                    }}
+                                  >
+                                    ({bat.dismissalType || "out"})
+                                  </span>
+                                )}
+                              </td>
+                              <td
+                                style={{
+                                  textAlign: "center",
+                                  fontWeight: "bold",
+                                  color: "#ff8c00",
+                                }}
+                              >
+                                {bat.runs || 0}
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                {bat.balls || 0}
+                              </td>
+                              <td
+                                style={{
+                                  textAlign: "center",
+                                  color: "#1976d2",
+                                }}
+                              >
+                                {bat.fours || 0}
+                              </td>
+                              <td
+                                style={{
+                                  textAlign: "center",
+                                  color: "#7b1fa2",
+                                }}
+                              >
+                                {bat.sixes || 0}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+
+                    {/* Bowler Stats */}
+                    {so.innings2?.bowler && so.innings2.bowler.playerName && (
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: "#666",
+                          padding: "8px",
+                          background: "#f5f5f5",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        <strong>Bowler:</strong> {so.innings2.bowler.playerName}{" "}
+                        - 0.{so.innings2.bowler.balls || 0} |{" "}
+                        {so.innings2.bowler.runs || 0}-
+                        {so.innings2.bowler.wickets || 0}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="completed-match-scorecard-page">
       <div className="page-header">
@@ -536,6 +971,26 @@ const CompletedMatchScorecard = ({ matchId: propMatchId, onBack }) => {
               >
                 2nd Innings
               </button>
+              {/* Super Over Tab - only show if super overs exist */}
+              {(scorecardData?.superOvers?.length > 0 ||
+                scorecardData?.scorecard?.superOvers?.length > 0) && (
+                <button
+                  className={`tab-button ${
+                    activeInnings === "superover" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveInnings("superover")}
+                  style={{
+                    background:
+                      activeInnings === "superover"
+                        ? "linear-gradient(135deg, #ff8c00 0%, #ffa500 100%)"
+                        : "transparent",
+                    color: activeInnings === "superover" ? "white" : "#ff8c00",
+                    border: "2px solid #ff8c00",
+                  }}
+                >
+                  🔁 Super Over
+                </button>
+              )}
             </div>
           )}
 
@@ -555,6 +1010,9 @@ const CompletedMatchScorecard = ({ matchId: propMatchId, onBack }) => {
               {renderFieldingCard(scorecardData.scorecard.innings.innings2, 2)}
             </div>
           )}
+
+          {/* Super Over Content */}
+          {activeInnings === "superover" && renderSuperOverSection()}
 
           {/* Officials Info */}
           {renderOfficialsInfo()}

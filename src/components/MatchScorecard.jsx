@@ -77,11 +77,20 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
     return ((runs / balls) * 100).toFixed(2);
   };
 
-  const formatExtras = (extras) => {
-    if (!extras || !extras.breakdown) return "";
-    const { byes, legByes, wides, noBalls, penalties } = extras.breakdown;
-    const parts = [];
+  const formatExtras = (extras, fallbackExtras) => {
+    // Support multiple shapes and casing from different endpoints / payloads
+    const ex = extras || fallbackExtras || {};
+    const breakdown = ex.breakdown || ex;
 
+    const byes = breakdown.byes ?? breakdown.by ?? 0;
+    const legByes =
+      breakdown.legByes ?? breakdown.legbyes ?? breakdown.leg ?? 0;
+    const wides = breakdown.wides ?? breakdown.wide ?? 0;
+    const noBalls =
+      breakdown.noBalls ?? breakdown.noballs ?? breakdown.no_ball ?? 0;
+    const penalties = breakdown.penalties ?? breakdown.pens ?? 0;
+
+    const parts = [];
     if (byes > 0) parts.push(`b ${byes}`);
     if (legByes > 0) parts.push(`lb ${legByes}`);
     if (wides > 0) parts.push(`w ${wides}`);
@@ -156,8 +165,16 @@ const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
 
               {/* Extras row */}
               <tr className="extras-row">
-                <td className="extras-label">{formatExtras(extras)}</td>
-                <td className="extras-value">{extras.total}</td>
+                <td className="extras-label">
+                  {formatExtras(extras, inningsData.score?.extras)}
+                </td>
+                <td className="extras-value">
+                  {(extras && extras.total) ||
+                    (inningsData.score &&
+                      inningsData.score.extras &&
+                      inningsData.score.extras.total) ||
+                    0}
+                </td>
                 <td colSpan="6"></td>
               </tr>
 

@@ -703,9 +703,6 @@ function PlayerPoints({ matchId: propMatchId, token }) {
                   {selectedPlayer.player.isCaptain && (
                     <span className="badge-c">C</span>
                   )}
-                  {selectedPlayer.player.isWicketKeeper && (
-                    <span className="badge-wk">WK</span>
-                  )}
                 </h2>
                 <p className="player-meta">
                   {selectedPlayer.player.teamName} ·{" "}

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import GlobalErrorNotification from "../components/GlobalErrorNotification";
-import OverSummary from "../components/OverSummary";
 import API_BASE_URL from "../config/api";
 
 // Player Selection Form Component
@@ -11,6 +10,8 @@ const PlayerSelectionForm = ({
   match,
   onPlayersSelected,
   autoPopulateTeams = false, // New prop for second innings
+  battingTeamOverride = null, // Override batting team (for super over)
+  bowlingTeamOverride = null, // Override bowling team (for super over)
 }) => {
   const [selectedBattingTeam, setSelectedBattingTeam] = useState("");
   const [selectedBowlingTeam, setSelectedBowlingTeam] = useState("");
@@ -20,24 +21,30 @@ const PlayerSelectionForm = ({
 
   // Auto-populate teams for second innings
   useEffect(() => {
-    if (autoPopulateTeams && match?.currentState) {
-      const battingTeamId = match.currentState.battingTeam?.teamId;
-      const bowlingTeamId = match.currentState.bowlingTeam?.teamId;
+    if (autoPopulateTeams) {
+      // Prioritize overrides (for super over) over match currentState
+      const battingTeamId =
+        battingTeamOverride?.teamId || match?.currentState?.battingTeam?.teamId;
+      const bowlingTeamId =
+        bowlingTeamOverride?.teamId || match?.currentState?.bowlingTeam?.teamId;
 
       if (battingTeamId && bowlingTeamId) {
         setSelectedBattingTeam(battingTeamId);
         setSelectedBowlingTeam(bowlingTeamId);
       }
     }
-  }, [autoPopulateTeams, match]);
+  }, [autoPopulateTeams, match, battingTeamOverride, bowlingTeamOverride]);
 
   // Get players from selected teams (only playing XI from lineups)
   const getBattingTeamPlayers = () => {
-    if (!selectedBattingTeam || !match) return [];
+    // Use override teamId if provided (for super over), otherwise use selected team
+    const teamId = battingTeamOverride?.teamId || selectedBattingTeam;
+
+    if (!teamId || !match) return [];
 
     const playersPerTeam = match.playersPerTeam || 11; // Use match-specific player count
 
-    if (selectedBattingTeam === match.teams.team1.teamId) {
+    if (teamId === match.teams.team1.teamId) {
       // First check if selectedPlayers exists (lineup has been set)
       const selectedPlayers = match.teams.team1.selectedPlayers;
       if (selectedPlayers && selectedPlayers.length > 0) {
@@ -55,7 +62,7 @@ const PlayerSelectionForm = ({
         });
       }
       return match.teams.team1.players.slice(0, playersPerTeam) || [];
-    } else {
+    } else if (teamId === match.teams.team2.teamId) {
       // First check if selectedPlayers exists (lineup has been set)
       const selectedPlayers = match.teams.team2.selectedPlayers;
       if (selectedPlayers && selectedPlayers.length > 0) {
@@ -74,12 +81,17 @@ const PlayerSelectionForm = ({
       }
       return match.teams.team2.players.slice(0, playersPerTeam) || [];
     }
+
+    return []; // Return empty if teamId doesn't match either team
   };
 
   const getBowlingTeamPlayers = () => {
-    if (!selectedBowlingTeam || !match) return [];
+    // Use override teamId if provided (for super over), otherwise use selected team
+    const teamId = bowlingTeamOverride?.teamId || selectedBowlingTeam;
 
-    if (selectedBowlingTeam === match.teams.team1.teamId) {
+    if (!teamId || !match) return [];
+
+    if (teamId === match.teams.team1.teamId) {
       // First check if selectedPlayers exists (lineup has been set) - show ALL selected players
       const selectedPlayers = match.teams.team1.selectedPlayers;
       if (selectedPlayers && selectedPlayers.length > 0) {
@@ -98,7 +110,7 @@ const PlayerSelectionForm = ({
       }
       // Return all players from the team (no limit)
       return match.teams.team1.players || [];
-    } else {
+    } else if (teamId === match.teams.team2.teamId) {
       // First check if selectedPlayers exists (lineup has been set) - show ALL selected players
       const selectedPlayers = match.teams.team2.selectedPlayers;
       if (selectedPlayers && selectedPlayers.length > 0) {
@@ -118,6 +130,8 @@ const PlayerSelectionForm = ({
       // Return all players from the team (no limit)
       return match.teams.team2.players || [];
     }
+
+    return []; // Return empty if teamId doesn't match either team
   };
 
   const battingTeamPlayers = getBattingTeamPlayers();
@@ -182,6 +196,10 @@ const PlayerSelectionForm = ({
   };
 
   const getBattingTeamName = () => {
+    // Use override if provided (for super over)
+    if (battingTeamOverride?.teamName) {
+      return battingTeamOverride.teamName;
+    }
     if (!selectedBattingTeam || !match) return "";
     return selectedBattingTeam === match.teams.team1.teamId
       ? match.teams.team1.teamName
@@ -189,6 +207,10 @@ const PlayerSelectionForm = ({
   };
 
   const getBowlingTeamName = () => {
+    // Use override if provided (for super over)
+    if (bowlingTeamOverride?.teamName) {
+      return bowlingTeamOverride.teamName;
+    }
     if (!selectedBowlingTeam || !match) return "";
     return selectedBowlingTeam === match.teams.team1.teamId
       ? match.teams.team1.teamName
@@ -544,6 +566,9 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
   const [showSuperOverInningsBreak, setShowSuperOverInningsBreak] =
     useState(false);
   const [superOverResult, setSuperOverResult] = useState(null);
+  const [superOverBattingTeam, setSuperOverBattingTeam] = useState(null);
+  const [superOverBowlingTeam, setSuperOverBowlingTeam] = useState(null);
+  const [currentSuperOverData, setCurrentSuperOverData] = useState(null); // Store live super over data
 
   // Selection states for modals
   const [selectedRunOutBatsman, setSelectedRunOutBatsman] = useState("");
@@ -985,7 +1010,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       if (!confirm) return;
 
       const response = await fetch(
-        `${API_BASE_URL}/api/matches/${matchId}/super-over`,
+        `${API_BASE_URL}/api/live-matches/${matchId}/super-over`,
         {
           method: "POST",
           headers: {
@@ -1008,6 +1033,18 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       setSuperOverTarget(0);
       setSuperOverResult(null);
 
+      // Set initial teams from response (1st innings)
+      if (data.data?.battingTeam && data.data?.bowlingTeam) {
+        setSuperOverBattingTeam({
+          teamId: data.data.battingTeam.teamId,
+          teamName: data.data.battingTeam.teamName,
+        });
+        setSuperOverBowlingTeam({
+          teamId: data.data.bowlingTeam.teamId,
+          teamName: data.data.bowlingTeam.teamName,
+        });
+      }
+
       // Refresh match and UI
       setShowMatchComplete(false);
       setStatus(`🔁 Super Over #${superOverNum} started - Select players`);
@@ -1022,7 +1059,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
 
       // Fetch latest match state and show player selection
       await initializeScorer();
-      setShowSuperOverPlayerSelection(true);
+      setShowPlayerSelection(true);
     } catch (err) {
       console.error("Error starting super over:", err);
       addGlobalError(`Failed to start Super Over: ${err.message}`, "api");
@@ -1035,7 +1072,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       setStatus("Recording super over ball...");
 
       const response = await fetch(
-        `${API_BASE_URL}/api/matches/${matchId}/super-over/ball`,
+        `${API_BASE_URL}/api/live-matches/${matchId}/super-over/ball`,
         {
           method: "POST",
           headers: {
@@ -1052,9 +1089,46 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       }
 
       // Update super over score from response
-      const currentSO = data.data?.currentSuperOver;
-      const inningsData =
+      // Backend may return 'currentSuperOver' or 'superOver' depending on the endpoint
+      const currentSO = data.data?.currentSuperOver || data.data?.superOver;
+
+      // Store the current super over data for stats display
+      if (currentSO) {
+        setCurrentSuperOverData(currentSO);
+
+        // Update bowler stats from super over data
+        const currentInnings = superOverInnings === 1 ? "innings1" : "innings2";
+        const bowler = currentSO[currentInnings]?.bowler;
+        if (bowler && bowler.playerId) {
+          const ballsBowled = bowler.balls || 0;
+          const overs = Math.floor(ballsBowled / 6) + (ballsBowled % 6) / 10;
+          setCurrentBowlerStats({
+            playerId: bowler.playerId,
+            playerName: bowler.playerName,
+            balls: ballsBowled,
+            runs: bowler.runs || 0,
+            wickets: bowler.wickets || 0,
+            overs:
+              ballsBowled > 0
+                ? `${Math.floor(ballsBowled / 6)}.${ballsBowled % 6}`
+                : "0.0",
+            economyRate:
+              overs > 0 ? ((bowler.runs || 0) / overs).toFixed(1) : "0.0",
+          });
+        }
+      }
+
+      let inningsData =
         superOverInnings === 1 ? currentSO?.innings1 : currentSO?.innings2;
+
+      // Fallback: some responses include a currentScore object instead
+      if (!inningsData && data.data?.currentScore) {
+        inningsData = {
+          runs: data.data.currentScore.runs || 0,
+          wickets: data.data.currentScore.wickets || 0,
+          balls: data.data.currentScore.balls || 0,
+        };
+      }
 
       if (inningsData) {
         setSuperOverScore({
@@ -1065,10 +1139,18 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       }
 
       // Check if super over innings completed
-      if (data.data?.superOverInningsComplete) {
+      if (data.data?.inningsComplete) {
         if (superOverInnings === 1) {
           // First innings complete, show break modal
-          setSuperOverTarget(inningsData.runs + 1);
+          const targetFromInnings = inningsData
+            ? inningsData.runs + 1
+            : data.data.currentScore?.runs + 1 || 0;
+          console.log(
+            "🔔 SuperOver innings complete - setting target:",
+            targetFromInnings,
+            { inningsData, currentScore: data.data.currentScore }
+          );
+          setSuperOverTarget(targetFromInnings);
           setShowSuperOverInningsBreak(true);
         } else {
           // Second innings complete, check result
@@ -1079,6 +1161,139 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       // Update match data
       if (data.data?.match) {
         setMatch(data.data.match);
+      }
+
+      // Check if wicket occurred - show new batsman selection
+      if (ballData.wicket?.isWicket && !data.data?.inningsComplete) {
+        const dismissedPlayer = ballData.wicket.dismissedPlayer;
+        console.log(
+          "🏏 Wicket in super over - need new batsman:",
+          dismissedPlayer
+        );
+        setOutBatsman(dismissedPlayer);
+        setShowNewBatsmanSelection(true);
+
+        setStatus("Wicket! Select new batsman");
+        setLiveUpdates((prev) => [
+          ...prev,
+          {
+            type: "wicket",
+            message: `🏏 WICKET! ${dismissedPlayer.playerName} is out`,
+            time: new Date(),
+          },
+        ]);
+
+        // Reset current ball state
+        setCurrentBall((prev) => ({
+          ...prev,
+          runs: 0,
+          ballType: "legal",
+          isWicket: false,
+          wicketType: "",
+          fielder: null,
+        }));
+
+        return data;
+      }
+
+      // Check for strike rotation from backend response or handle manually
+      const updatedMatch = { ...match };
+
+      if (currentSO?.currentBatsmen) {
+        // Use backend provided batsmen if available
+        if (updatedMatch.currentState) {
+          updatedMatch.currentState.currentBatsmen = {
+            striker: currentSO.currentBatsmen.striker,
+            nonStriker: currentSO.currentBatsmen.nonStriker,
+          };
+          console.log(
+            "🔄 Strike updated from backend:",
+            currentSO.currentBatsmen
+          );
+        }
+      } else {
+        // Manual strike rotation for odd runs or end of over
+        const totalRuns = ballData.runs?.total || 0; // Use total runs, not batsman runs
+        const isLegalBall =
+          ballData.ballType === "legal" ||
+          ballData.ballType === "bye" ||
+          ballData.ballType === "leg-bye";
+        const isOddRuns = totalRuns % 2 === 1;
+        const noWicket = !ballData.wicket?.isWicket;
+
+        // Get the current super over balls to check for end of over
+        const currentBalls = inningsData?.balls || 0;
+        const isEndOfOver = currentBalls % 6 === 0 && currentBalls > 0;
+
+        if (updatedMatch.currentState?.currentBatsmen && noWicket) {
+          const currentBatsmen = updatedMatch.currentState.currentBatsmen;
+          let shouldRotate = false;
+
+          // Rotate for odd runs on legal balls
+          if (isLegalBall && isOddRuns) {
+            shouldRotate = true;
+            console.log("🔄 Rotating strike for odd runs:", totalRuns);
+          }
+
+          // Also rotate at end of over (even if 0 runs on last ball)
+          if (isEndOfOver && isLegalBall) {
+            shouldRotate = !shouldRotate; // Toggle if already rotated for odd runs
+            console.log("🔄 End of over - rotating strike");
+          }
+
+          if (shouldRotate) {
+            updatedMatch.currentState.currentBatsmen = {
+              striker: currentBatsmen.nonStriker,
+              nonStriker: currentBatsmen.striker,
+            };
+            console.log("🔄 Strike rotated:", {
+              runs: totalRuns,
+              endOfOver: isEndOfOver,
+              newStriker: currentBatsmen.nonStriker.playerName,
+              newNonStriker: currentBatsmen.striker.playerName,
+            });
+          }
+        }
+      }
+
+      // Apply the updated match state
+      setMatch(updatedMatch);
+
+      // If strike was rotated, update backend to persist the change
+      if (
+        updatedMatch.currentState?.currentBatsmen &&
+        updatedMatch.currentState.currentBatsmen.striker.playerId !==
+          match.currentState?.currentBatsmen?.striker.playerId
+      ) {
+        console.log("💾 Persisting strike rotation to backend...");
+        try {
+          const updateResponse = await fetch(
+            `${API_BASE_URL}/api/live-matches/${matchId}/current-players`,
+            {
+              method: "PUT",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                currentBatsmen: {
+                  striker: updatedMatch.currentState.currentBatsmen.striker,
+                  nonStriker:
+                    updatedMatch.currentState.currentBatsmen.nonStriker,
+                },
+                currentBowler: updatedMatch.currentState.currentBowler,
+              }),
+            }
+          );
+
+          if (updateResponse.ok) {
+            console.log("✅ Strike rotation persisted to backend");
+          } else {
+            console.warn("⚠️ Failed to persist strike rotation to backend");
+          }
+        } catch (error) {
+          console.error("❌ Error persisting strike rotation:", error);
+        }
       }
 
       setStatus("Super over ball recorded");
@@ -1116,7 +1331,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       setStatus("Starting super over second innings...");
 
       const response = await fetch(
-        `${API_BASE_URL}/api/matches/${matchId}/super-over/second-innings`,
+        `${API_BASE_URL}/api/live-matches/${matchId}/super-over/second-innings`,
         {
           method: "POST",
           headers: {
@@ -1137,13 +1352,31 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       setSuperOverInnings(2);
       setSuperOverScore({ runs: 0, wickets: 0, balls: 0 });
 
-      const currentSO = data.data?.currentSuperOver;
+      // Swap teams for 2nd innings based on backend response
+      if (data.data?.battingTeam && data.data?.bowlingTeam) {
+        console.log("🔄 Swapping super over teams for 2nd innings:", {
+          batting: data.data.battingTeam,
+          bowling: data.data.bowlingTeam,
+        });
+        setSuperOverBattingTeam({
+          teamId: data.data.battingTeam.teamId,
+          teamName: data.data.battingTeam.teamName,
+        });
+        setSuperOverBowlingTeam({
+          teamId: data.data.bowlingTeam.teamId,
+          teamName: data.data.bowlingTeam.teamName,
+        });
+      }
+
+      const currentSO = data.data?.currentSuperOver || data.data?.superOver;
       if (currentSO?.innings2?.target) {
         setSuperOverTarget(currentSO.innings2.target);
+      } else if (data.data?.target) {
+        setSuperOverTarget(data.data.target);
       }
 
       setShowSuperOverInningsBreak(false);
-      setShowSuperOverPlayerSelection(true);
+      setShowPlayerSelection(true);
 
       // Update match
       if (data.data?.match) {
@@ -1212,11 +1445,11 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            striker,
-            nonStriker,
-            bowler,
-            battingTeamId,
-            bowlingTeamId,
+            currentBatsmen: {
+              striker: striker,
+              nonStriker: nonStriker,
+            },
+            currentBowler: bowler,
           }),
         }
       );
@@ -1231,7 +1464,6 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       setCurrentNonStriker(nonStriker);
       setCurrentBowler(bowler);
 
-      setShowSuperOverPlayerSelection(false);
       setShowPlayerSelection(false);
 
       setStatus(
@@ -1346,10 +1578,30 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
   // Update canUndo state based on score
   useEffect(() => {
     // Can undo if there are balls bowled and match is in progress
-    const hasBalls = score.balls > 0;
+    let hasBalls = false;
+
+    if (isSuperOver && currentSuperOverData) {
+      // For super over, check if current innings has balls
+      const currentInnings =
+        superOverInnings === 1
+          ? currentSuperOverData.innings1
+          : currentSuperOverData.innings2;
+      hasBalls = currentInnings?.balls > 0;
+    } else {
+      // For regular match, check score.balls
+      hasBalls = score.balls > 0;
+    }
+
     const isInProgress = match?.currentState?.status === "in-progress";
     setCanUndo(hasBalls && isInProgress && !isUndoing);
-  }, [score.balls, match?.currentState?.status, isUndoing]);
+  }, [
+    score.balls,
+    match?.currentState?.status,
+    isUndoing,
+    isSuperOver,
+    currentSuperOverData,
+    superOverInnings,
+  ]);
 
   const initializeScorer = async () => {
     // Prevent multiple simultaneous initializations
@@ -1416,7 +1668,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           matchData.data.match.currentState?.currentBatsmen?.striker &&
           matchData.data.match.currentState?.currentBowler;
         if (!hasPlayers) {
-          setShowSuperOverPlayerSelection(true);
+          setShowPlayerSelection(true);
         }
       } else {
         setIsSuperOver(false);
@@ -3289,7 +3541,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
     setPendingBallData(null);
   };
 
-  const handleNewBatsmanSelection = (newBatsmanId) => {
+  const handleNewBatsmanSelection = async (newBatsmanId) => {
     try {
       console.log("🏏 Starting new batsman selection process:", {
         newBatsmanId,
@@ -3377,14 +3629,59 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           wicketBallData?.runs?.batsman % 2 === 1,
       });
 
-      // Update the match state
-      updateCurrentPlayers(
-        updatedBatsmen.striker,
-        updatedBatsmen.nonStriker,
-        match.currentState.currentBowler,
-        match.currentState.battingTeam.teamId,
-        match.currentState.bowlingTeam.teamId
-      );
+      // Check if we're in super over mode
+      if (isSuperOver) {
+        // For super over, update via regular current-players endpoint
+        console.log("🔁 Updating super over players after wicket");
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/live-matches/${matchId}/current-players`,
+          {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              currentBatsmen: {
+                striker: updatedBatsmen.striker,
+                nonStriker: updatedBatsmen.nonStriker,
+              },
+              currentBowler: match.currentState.currentBowler,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            `Failed to update super over players: ${
+              errorData.message || "Unknown error"
+            }`
+          );
+        }
+
+        const data = await response.json();
+
+        // Update match state with new batsmen
+        const updatedMatch = { ...match };
+        if (updatedMatch.currentState) {
+          updatedMatch.currentState.currentBatsmen = updatedBatsmen;
+          setMatch(updatedMatch);
+        }
+
+        // Refresh match data to get updated super over state
+        await refreshMatchData();
+      } else {
+        // Regular match - use normal update
+        updateCurrentPlayers(
+          updatedBatsmen.striker,
+          updatedBatsmen.nonStriker,
+          match.currentState.currentBowler,
+          match.currentState.battingTeam.teamId,
+          match.currentState.bowlingTeam.teamId
+        );
+      }
 
       setShowNewBatsmanSelection(false);
       setOutBatsman(null);
@@ -3543,16 +3840,20 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
 
       console.log("🔙 Attempting to undo last ball for match:", matchId);
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/live-matches/${matchId}/undo-ball`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      // Determine endpoint based on whether we're in super over
+      const endpoint = isSuperOver
+        ? `${API_BASE_URL}/api/live-matches/${matchId}/super-over/undo-ball`
+        : `${API_BASE_URL}/api/live-matches/${matchId}/undo-ball`;
+
+      console.log("🔙 Using endpoint:", endpoint, "isSuperOver:", isSuperOver);
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       const data = await response.json();
 
@@ -3560,22 +3861,47 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         console.log("✅ Ball undone successfully:", data.data);
 
         // Update local state with the reverted score
-        if (data.data.currentScore) {
-          const revertedScore = {
-            runs: data.data.currentScore.runs || 0,
-            wickets: data.data.currentScore.wickets || 0,
-            overs: data.data.currentScore.overs || 0,
-            balls: data.data.currentScore.balls || 0,
-            innings: data.data.currentScore.innings || score.innings,
-            extras: data.data.currentScore.extras || {
-              total: 0,
-              wides: 0,
-              noballs: 0,
-              byes: 0,
-              legbyes: 0,
-            },
-          };
-          setScore(revertedScore);
+        if (isSuperOver) {
+          // For super over, update currentSuperOverData
+          if (data.data.superOver) {
+            setCurrentSuperOverData(data.data.superOver);
+          }
+          // Update score with super over data
+          if (data.data.currentScore) {
+            setScore({
+              runs: data.data.currentScore.runs || 0,
+              wickets: data.data.currentScore.wickets || 0,
+              overs: 0, // Super over doesn't use overs
+              balls: data.data.currentScore.balls || 0,
+              innings: data.data.innings || superOverInnings,
+              extras: data.data.currentScore.extras || {
+                total: 0,
+                wides: 0,
+                noballs: 0,
+                byes: 0,
+                legbyes: 0,
+              },
+            });
+          }
+        } else {
+          // Regular match undo
+          if (data.data.currentScore) {
+            const revertedScore = {
+              runs: data.data.currentScore.runs || 0,
+              wickets: data.data.currentScore.wickets || 0,
+              overs: data.data.currentScore.overs || 0,
+              balls: data.data.currentScore.balls || 0,
+              innings: data.data.currentScore.innings || score.innings,
+              extras: data.data.currentScore.extras || {
+                total: 0,
+                wides: 0,
+                noballs: 0,
+                byes: 0,
+                legbyes: 0,
+              },
+            };
+            setScore(revertedScore);
+          }
         }
 
         // Refresh match data to get updated player stats
@@ -3747,7 +4073,35 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       return { runs: 0, ballsFaced: 0, fours: 0, sixes: 0, strikeRate: 0 };
     }
 
-    // Find player in current batting team
+    // If in super over, use live super over data from currentSuperOverData
+    if (isSuperOver && currentSuperOverData) {
+      // Determine which innings to check based on current super over innings
+      const currentInnings = superOverInnings === 1 ? "innings1" : "innings2";
+      const batsmen = currentSuperOverData[currentInnings]?.batsmen || [];
+
+      const superOverBatsman = batsmen.find((b) => b.playerId === playerId);
+
+      if (superOverBatsman) {
+        return {
+          runs: superOverBatsman.runs || 0,
+          ballsFaced: superOverBatsman.balls || 0,
+          fours: superOverBatsman.fours || 0,
+          sixes: superOverBatsman.sixes || 0,
+          strikeRate:
+            superOverBatsman.balls > 0
+              ? (
+                  (superOverBatsman.runs / superOverBatsman.balls) *
+                  100
+                ).toFixed(1)
+              : 0,
+        };
+      }
+
+      // Player not found in super over stats - return zeros (don't fall back to regular match)
+      return { runs: 0, ballsFaced: 0, fours: 0, sixes: 0, strikeRate: 0 };
+    }
+
+    // Find player in current batting team (regular match stats)
     const battingTeam = match.currentState?.battingTeam;
     if (!battingTeam)
       return { runs: 0, ballsFaced: 0, fours: 0, sixes: 0, strikeRate: 0 };
@@ -3777,7 +4131,29 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       return { balls: 0, runs: 0, wickets: 0, economyRate: 0 };
     }
 
-    // Find player in current bowling team
+    // If in super over, use live super over data from currentSuperOverData
+    if (isSuperOver && currentSuperOverData) {
+      // Determine which innings to check based on current super over innings
+      const currentInnings = superOverInnings === 1 ? "innings1" : "innings2";
+      const bowler = currentSuperOverData[currentInnings]?.bowler;
+
+      if (bowler && bowler.playerId === playerId) {
+        const overs = Math.floor(bowler.balls / 6) + (bowler.balls % 6) / 10;
+        const economyRate = overs > 0 ? (bowler.runs / overs).toFixed(1) : 0;
+
+        return {
+          balls: bowler.balls || 0,
+          runs: bowler.runs || 0,
+          wickets: bowler.wickets || 0,
+          economyRate: economyRate,
+        };
+      }
+
+      // Bowler not found in super over stats - return zeros (don't fall back to regular match)
+      return { balls: 0, runs: 0, wickets: 0, economyRate: 0 };
+    }
+
+    // Find player in current bowling team (regular match stats)
     const bowlingTeam = match.currentState?.bowlingTeam;
     if (!bowlingTeam) return { balls: 0, runs: 0, wickets: 0, economyRate: 0 };
 
@@ -3841,6 +4217,12 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
 
   // Player Selection Component
   if (showPlayerSelection) {
+    // Check if this is for super over
+    const isSuperOverSelection = isSuperOver && superOverNumber > 0;
+    const selectionHandler = isSuperOverSelection
+      ? handleSuperOverPlayersSelected
+      : updateCurrentPlayers;
+
     return (
       <div style={{ padding: 20, fontFamily: "Arial, sans-serif" }}>
         <div
@@ -3851,9 +4233,21 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
             alignItems: "center",
           }}
         >
-          <h3>🎯 Select Current Players</h3>
+          <h3>
+            {isSuperOverSelection
+              ? `🔁 Super Over #${superOverNumber} - ${
+                  superOverInnings === 1 ? "1st" : "2nd"
+                } Innings`
+              : "🎯 Select Current Players"}
+          </h3>
           <button
-            onClick={onBack}
+            onClick={() => {
+              if (isSuperOverSelection) {
+                setShowPlayerSelection(false);
+              } else {
+                onBack();
+              }
+            }}
             style={{
               padding: "8px 16px",
               background: "#6c757d",
@@ -3862,9 +4256,43 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
               borderRadius: 4,
             }}
           >
-            Back
+            {isSuperOverSelection ? "Cancel" : "Back"}
           </button>
         </div>
+
+        {isSuperOverSelection && (
+          <div
+            style={{
+              marginBottom: 20,
+              textAlign: "center",
+              padding: "15px",
+              background: "#fff3e0",
+              borderRadius: "8px",
+              border: "2px solid #ff8c00",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "14px",
+                color: "#e65100",
+                fontWeight: "bold",
+              }}
+            >
+              {superOverInnings === 1
+                ? `Select 2 batsmen and 1 bowler for ${
+                    superOverBattingTeam?.teamName ||
+                    match?.currentState?.battingTeam?.teamName ||
+                    "batting team"
+                  }`
+                : `Select 2 batsmen and 1 bowler for ${
+                    superOverBattingTeam?.teamName ||
+                    match?.currentState?.battingTeam?.teamName ||
+                    "batting team"
+                  } (Target: ${superOverTarget})`}
+            </p>
+          </div>
+        )}
 
         <div
           style={{
@@ -3882,11 +4310,15 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           </p>
           <p>
             <strong>Batting Team:</strong>{" "}
-            {match.currentState?.battingTeam?.teamName}
+            {isSuperOverSelection && superOverBattingTeam?.teamName
+              ? superOverBattingTeam.teamName
+              : match.currentState?.battingTeam?.teamName}
           </p>
           <p>
             <strong>Bowling Team:</strong>{" "}
-            {match.currentState?.bowlingTeam?.teamName}
+            {isSuperOverSelection && superOverBowlingTeam?.teamName
+              ? superOverBowlingTeam.teamName
+              : match.currentState?.bowlingTeam?.teamName}
           </p>
         </div>
 
@@ -3894,8 +4326,16 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           availableBatsmen={availableBatsmen}
           availableBowlers={availableBowlers}
           match={match}
-          onPlayersSelected={updateCurrentPlayers}
-          autoPopulateTeams={match?.currentState?.currentInnings === 2}
+          onPlayersSelected={selectionHandler}
+          autoPopulateTeams={
+            isSuperOverSelection || match?.currentState?.currentInnings === 2
+          }
+          battingTeamOverride={
+            isSuperOverSelection ? superOverBattingTeam : null
+          }
+          bowlingTeamOverride={
+            isSuperOverSelection ? superOverBowlingTeam : null
+          }
         />
       </div>
     );
@@ -4182,8 +4622,8 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         )}
 
         <p>
-          <strong>Current Ball:</strong> Over {Math.floor(score.balls / 6) + 1},
-          Ball {score.balls % 6}
+          <strong>Current Ball:</strong> Over {Math.floor(score.balls / 6)},
+          Ball {score.balls % 6 || 6}
         </p>
 
         {/* Current Over Balls */}
@@ -4191,31 +4631,68 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
           <strong>Current Over:</strong>
           <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
             {recentBalls && recentBalls.length > 0 ? (
-              recentBalls.map((b) => (
-                <div
-                  key={b.ballId}
-                  style={{
-                    border: "1px solid #e0e0e0",
-                    background: "#fafafa",
-                    padding: "6px 8px",
-                    borderRadius: 6,
-                    fontSize: 13,
-                    minWidth: 80,
-                    textAlign: "center",
-                  }}
-                >
-                  <div style={{ fontSize: 12, color: "#666" }}>
-                    {b.displayOver}
+              recentBalls.map((b) => {
+                // Determine solid background color based on ball type
+                let bgColor = "#757575"; // default gray for regular balls
+                let textColor = "#fff"; // white text
+                let bottomLabel = ""; // Extra type or empty
+
+                if (b.isWicket) {
+                  bgColor = "#d32f2f"; // solid red for wickets
+                  bottomLabel = "Wicket";
+                } else if (b.runs?.total === 6) {
+                  bgColor = "#1976d2"; // solid blue for six
+                } else if (b.runs?.total === 4) {
+                  bgColor = "#388e3c"; // solid green for four
+                } else if (b.extras === "wide") {
+                  bgColor = "#f57c00"; // solid orange for wide
+                  bottomLabel = "Wide";
+                } else if (b.extras === "no-ball") {
+                  bgColor = "#7b1fa2"; // solid purple for no-ball
+                  bottomLabel = "No Ball";
+                } else if (b.extras === "bye") {
+                  bgColor = "#5d4037"; // solid brown for bye
+                  bottomLabel = "Bye";
+                } else if (b.extras === "leg-bye") {
+                  bgColor = "#5d4037"; // solid brown for leg-bye
+                  bottomLabel = "Leg Bye";
+                } else if (b.runs?.total === 0 && !b.isWicket) {
+                  bgColor = "#616161"; // solid dark gray for dot balls
+                  bottomLabel = "Dot";
+                }
+
+                return (
+                  <div
+                    key={b.ballId}
+                    style={{
+                      border: "none",
+                      background: bgColor,
+                      padding: "8px 10px",
+                      borderRadius: 6,
+                      fontSize: 13,
+                      minWidth: 70,
+                      textAlign: "center",
+                      color: textColor,
+                    }}
+                  >
+                    <div style={{ fontSize: 11, opacity: 0.9 }}>
+                      {b.displayOver}
+                    </div>
+                    <div
+                      style={{
+                        fontWeight: "bold",
+                        marginTop: 4,
+                        fontSize: 20,
+                      }}
+                    >
+                      {b.isWicket ? "W" : b.runs?.total ?? "0"}
+                    </div>
+                    <div style={{ fontSize: 10, marginTop: 4, opacity: 0.9 }}>
+                      {bottomLabel || "-"}
+                    </div>
                   </div>
-                  <div style={{ fontWeight: "bold", marginTop: 4 }}>
-                    {b.isWicket ? "W" : b.runs?.total ?? "0"}
-                    {b.extras ? "e" : ""}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
-                    {b.batsman?.playerName?.split(" ")[0] || "-"}
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div style={{ color: "#666", fontSize: 13 }}>
                 No balls in current over yet
@@ -4772,12 +5249,6 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
         </div>
       </div>
 
-      {/* Over Summary Component */}
-      <OverSummary
-        match={match}
-        currentInnings={match?.currentState?.currentInnings || 1}
-      />
-
       {/* Quick Runs */}
       <div style={{ marginBottom: 20 }}>
         <h5>Quick Runs</h5>
@@ -5113,6 +5584,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       {/* New Batsman Selection Modal */}
       {showNewBatsmanSelection && (
         <div
+          onClick={(e) => e.stopPropagation()} // Prevent closing when clicking outside
           style={{
             position: "fixed",
             top: 0,
@@ -5191,14 +5663,29 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                     : match.teams.team2;
 
                 // Use selectedPlayers if available, otherwise fall back to all players
-                const players =
+                const selectedPlayersList =
                   battingTeam?.selectedPlayers?.length > 0
                     ? battingTeam.selectedPlayers
                     : battingTeam?.players || [];
 
-                return players
+                // Get full player data from players array (which has batting stats)
+                const fullPlayers = battingTeam?.players || [];
+
+                return selectedPlayersList
+                  .map((selectedPlayer) => {
+                    // Find the full player data to get batting stats
+                    const fullPlayer = fullPlayers.find(
+                      (p) =>
+                        p.playerId.toString() ===
+                        selectedPlayer.playerId.toString()
+                    );
+                    return fullPlayer || selectedPlayer;
+                  })
                   .filter(
                     (player) =>
+                      // Exclude players who are already out
+                      !player.batting?.isOut &&
+                      // Exclude current batsmen
                       player.playerId !==
                         match.currentState.currentBatsmen?.striker?.playerId &&
                       player.playerId !==
@@ -5213,27 +5700,8 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
               })()}
             </select>
 
-            <div
-              style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}
-            >
-              <button
-                onClick={() => {
-                  setShowNewBatsmanSelection(false);
-                  setSelectedNewBatsman("");
-                  setOutBatsman(null);
-                  setWicketBallData(null); // Clear wicket ball data
-                }}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#6c757d",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 5,
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
+            {/* Removed Cancel button - user must select a batsman */}
+            <div style={{ display: "flex", justifyContent: "center" }}>
               <button
                 onClick={() => {
                   try {
@@ -5259,7 +5727,7 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                   cursor: selectedNewBatsman ? "pointer" : "not-allowed",
                 }}
               >
-                Confirm
+                Confirm Selection
               </button>
             </div>
           </div>
@@ -6615,95 +7083,6 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
       )}
 
       {/* Super Over Player Selection Modal */}
-      {showSuperOverPlayerSelection && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.8)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1001,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              padding: "30px",
-              borderRadius: "15px",
-              maxWidth: "600px",
-              width: "90%",
-              maxHeight: "90vh",
-              overflowY: "auto",
-              boxShadow: "0 8px 32px rgba(255, 140, 0, 0.4)",
-              border: "3px solid #ff8c00",
-            }}
-          >
-            <h2
-              style={{
-                color: "#ff8c00",
-                marginBottom: "20px",
-                textAlign: "center",
-              }}
-            >
-              🔁 Super Over #{superOverNumber} -{" "}
-              {superOverInnings === 1 ? "1st" : "2nd"} Innings
-            </h2>
-
-            <div
-              style={{
-                marginBottom: "20px",
-                textAlign: "center",
-                padding: "15px",
-                background: "#fff3e0",
-                borderRadius: "8px",
-              }}
-            >
-              <p style={{ margin: 0, fontSize: "14px", color: "#e65100" }}>
-                {superOverInnings === 1
-                  ? `Select 2 batsmen and 1 bowler for ${
-                      match?.currentState?.battingTeam?.teamName ||
-                      "batting team"
-                    }`
-                  : `Select 2 batsmen and 1 bowler for ${
-                      match?.currentState?.battingTeam?.teamName ||
-                      "batting team"
-                    } (Target: ${superOverTarget})`}
-              </p>
-            </div>
-
-            <PlayerSelectionForm
-              availableBatsmen={availableBatsmen}
-              availableBowlers={availableBowlers}
-              match={match}
-              autoPopulateTeams={true}
-              onPlayersSelected={handleSuperOverPlayersSelected}
-            />
-
-            <div style={{ textAlign: "center", marginTop: "15px" }}>
-              <button
-                onClick={() => setShowSuperOverPlayerSelection(false)}
-                style={{
-                  backgroundColor: "#6c757d",
-                  color: "white",
-                  border: "none",
-                  padding: "10px 25px",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Super Over Innings Break Modal */}
       {showSuperOverInningsBreak && (
         <div

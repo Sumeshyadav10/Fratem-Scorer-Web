@@ -125,8 +125,10 @@ function App() {
         setMatch(data.data.match);
 
         // Check if match has started (any balls played)
-        const matchStarted =
-          data.data.match.status === "live" && data.data.match.score?.balls > 0;
+        const matchStatus =
+          data.data.match.currentState?.status || data.data.match.status;
+        const ballsPlayed = data.data.match.score?.innings1?.balls || 0;
+        const matchStarted = matchStatus === "in-progress" && ballsPlayed > 0;
 
         if (matchStarted) {
           // Match already in progress - go directly to keypad
@@ -187,18 +189,31 @@ function App() {
       if (data.success) {
         setMatch(data.data.match);
 
-        // Check if both teams have selected players
-        const team1HasLineup =
-          data.data.match.teams.team1.selectedPlayers?.length > 0;
-        const team2HasLineup =
-          data.data.match.teams.team2.selectedPlayers?.length > 0;
+        // Check if match is in progress
+        const matchStatus =
+          data.data.match.currentState?.status || data.data.match.status;
+        const ballsPlayed = data.data.match.score?.innings1?.balls || 0;
+        const matchInProgress =
+          matchStatus === "in-progress" && ballsPlayed > 0;
 
-        if (!team1HasLineup || !team2HasLineup) {
-          // Show lineup selection modal
-          setShowLineupSelection(true);
-        } else {
-          // Lineup is complete, go to keypad
+        if (matchInProgress) {
+          // Match already started - go directly to keypad
+          console.log("🏏 Match in progress, going directly to keypad");
           setView("keypad");
+        } else {
+          // Check if both teams have selected players
+          const team1HasLineup =
+            data.data.match.teams.team1.selectedPlayers?.length > 0;
+          const team2HasLineup =
+            data.data.match.teams.team2.selectedPlayers?.length > 0;
+
+          if (!team1HasLineup || !team2HasLineup) {
+            // Show lineup selection modal
+            setShowLineupSelection(true);
+          } else {
+            // Lineup is complete, go to keypad
+            setView("keypad");
+          }
         }
       }
     } catch (error) {

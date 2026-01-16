@@ -2903,11 +2903,18 @@ const ScorerKeypad = ({ matchId, token, userType, onBack }) => {
                 );
 
                 // Calculate and set target for second innings
-                const calculatedTarget = target || (score?.runs || 0) + 1;
-                console.log(
-                  "🎯 Setting target for second innings:",
-                  calculatedTarget
-                );
+                // CRITICAL: Use data.score (from backend response) instead of score (frontend state)
+                // to ensure the last ball's runs are included in the target calculation
+                const finalInnings1Score = data.score || score;
+                const calculatedTarget =
+                  target || (finalInnings1Score?.runs || 0) + 1;
+
+                console.log("🎯 Setting target for second innings:", {
+                  calculatedTarget,
+                  innings1Runs: finalInnings1Score?.runs,
+                  targetFromBackend: target,
+                  usingBackendScore: !!data.score,
+                });
                 setTargetScore(calculatedTarget);
 
                 setStatus(

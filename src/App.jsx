@@ -106,15 +106,17 @@ function App() {
   };
 
   const handleMatchCreated = async (newMatchId) => {
-    console.log("🔍 App.jsx - Setting matchId:", newMatchId);
-    console.log("🔍 App.jsx - Type of matchId:", typeof newMatchId);
-    console.log("🔍 App.jsx - Length of matchId:", newMatchId?.length);
-    setMatchId(newMatchId);
+    const trimmedMatchId = newMatchId?.trim();
+    console.log("🔍 App.jsx - Setting matchId:", trimmedMatchId);
+    console.log("🔍 App.jsx - Original matchId:", newMatchId);
+    console.log("🔍 App.jsx - Type of matchId:", typeof trimmedMatchId);
+    console.log("🔍 App.jsx - Length of matchId:", trimmedMatchId?.length);
+    setMatchId(trimmedMatchId);
 
     // Fetch match data to check if lineup selection is needed
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/live-matches/${newMatchId}`,
+        `${API_BASE_URL}/api/live-matches/${trimmedMatchId}`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }
@@ -124,18 +126,23 @@ function App() {
       if (data.success) {
         setMatch(data.data.match);
 
-        // Check if match has started (any balls played)
+        // Check match status
         const matchStatus =
           data.data.match.currentState?.status || data.data.match.status;
         const ballsPlayed = data.data.match.score?.innings1?.balls || 0;
         const matchStarted = matchStatus === "in-progress" && ballsPlayed > 0;
+        const matchCompleted = matchStatus === "completed";
 
-        if (matchStarted) {
+        if (matchCompleted) {
+          // Match is completed - go to keypad to view
+          console.log("🏆 Match completed, going to keypad");
+          setView("keypad");
+        } else if (matchStarted) {
           // Match already in progress - go directly to keypad
           console.log("🏏 Match already started, going to keypad");
           setView("keypad");
         } else {
-          // Match not started - always show lineup selection
+          // Match not started - show lineup selection
           console.log("🎯 Match not started, showing lineup selection");
           setShowLineupSelection(true);
         }
@@ -189,14 +196,18 @@ function App() {
       if (data.success) {
         setMatch(data.data.match);
 
-        // Check if match is in progress
         const matchStatus =
           data.data.match.currentState?.status || data.data.match.status;
         const ballsPlayed = data.data.match.score?.innings1?.balls || 0;
         const matchInProgress =
           matchStatus === "in-progress" && ballsPlayed > 0;
+        const matchCompleted = matchStatus === "completed";
 
-        if (matchInProgress) {
+        if (matchCompleted) {
+          // Match is completed - show keypad (read-only)
+          console.log("🏆 Match completed, going to keypad");
+          setView("keypad");
+        } else if (matchInProgress) {
           // Match already started - go directly to keypad
           console.log("🏏 Match in progress, going directly to keypad");
           setView("keypad");
@@ -237,6 +248,16 @@ function App() {
       const data = await response.json();
 
       if (data.success) {
+        const matchStatus =
+          data.data.match.currentState?.status || data.data.match.status;
+
+        // Don't allow lineup selection for completed matches
+        if (matchStatus === "completed") {
+          console.log("⚠️ Cannot edit lineup - match is completed");
+          alert("Cannot edit lineup - match is already completed");
+          setView("keypad");
+          return;
+        }
         setMatch(data.data.match);
         setShowLineupSelection(true);
       }

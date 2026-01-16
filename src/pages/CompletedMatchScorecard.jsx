@@ -8,7 +8,7 @@ import API_BASE_URL from "../config/api";
  * Shows batting, bowling, fielding stats with professional UI/UX
  */
 const CompletedMatchScorecard = ({ matchId: propMatchId, onBack }) => {
-  const [matchId, setMatchId] = useState(propMatchId || "");
+  const [matchId, setMatchId] = useState(propMatchId?.trim() || "");
   const [scorecardData, setScorecardData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -16,8 +16,9 @@ const CompletedMatchScorecard = ({ matchId: propMatchId, onBack }) => {
 
   useEffect(() => {
     if (propMatchId) {
-      setMatchId(propMatchId);
-      fetchScorecard(propMatchId);
+      const trimmedId = propMatchId.trim();
+      setMatchId(trimmedId);
+      fetchScorecard(trimmedId);
     }
   }, [propMatchId]);
 

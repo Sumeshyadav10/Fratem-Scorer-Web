@@ -7,7 +7,11 @@ import API_BASE_URL from "../config/api";
  * Displays comprehensive match summary with batting and bowling statistics
  */
 
-const MatchScorecard = ({ matchId, apiBaseUrl = API_BASE_URL }) => {
+const MatchScorecard = ({
+  matchId: propMatchId,
+  apiBaseUrl = API_BASE_URL,
+}) => {
+  const matchId = propMatchId?.trim();
   const [matchData, setMatchData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

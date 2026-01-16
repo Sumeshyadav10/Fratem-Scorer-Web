@@ -57,10 +57,11 @@ function PlayerEntry({ onCreated, onUserSet }) {
 
       if (directMatchRes.ok) {
         const data = await directMatchRes.json();
-        setMatchId(data.data.matchId);
+        const trimmedMatchId = data.data.matchId?.trim();
+        setMatchId(trimmedMatchId);
         setCreatedMatch(data.data.match);
         setStatus(
-          "Match created directly: " + data.data.matchId + " - Ready to start!"
+          "Match created directly: " + trimmedMatchId + " - Ready to start!"
         );
         return;
       }
@@ -107,9 +108,10 @@ function PlayerEntry({ onCreated, onUserSet }) {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed");
-      setMatchId(data.data.matchId);
+      const trimmedMatchId = data.data.matchId?.trim();
+      setMatchId(trimmedMatchId);
       setCreatedMatch(data.data.match);
-      setStatus("Match created: " + data.data.matchId + " - Ready to start!");
+      setStatus("Match created: " + trimmedMatchId + " - Ready to start!");
     } catch (err) {
       setStatus("Error: " + err.message);
     }
@@ -494,15 +496,20 @@ function PlayerEntry({ onCreated, onUserSet }) {
             placeholder="Enter existing match ID"
             value={matchId}
             onChange={(e) => {
+              const trimmedValue = e.target.value.trim();
               console.log(
                 "🔍 PlayerEntry.jsx - Setting matchId from input:",
+                trimmedValue
+              );
+              console.log(
+                "🔍 PlayerEntry.jsx - Original value:",
                 e.target.value
               );
               console.log(
                 "🔍 PlayerEntry.jsx - Input type:",
-                typeof e.target.value
+                typeof trimmedValue
               );
-              setMatchId(e.target.value);
+              setMatchId(trimmedValue);
             }}
             style={{
               flex: 1,

@@ -9,13 +9,13 @@ import API_BASE_URL from "../config/api";
  */
 
 const ScorecardTest = ({ matchId: propMatchId }) => {
-  const [matchId, setMatchId] = useState(propMatchId || "");
+  const [matchId, setMatchId] = useState(propMatchId?.trim() || "");
   const [apiUrl, setApiUrl] = useState(API_BASE_URL);
 
   // Update matchId when prop changes
   React.useEffect(() => {
     if (propMatchId) {
-      setMatchId(propMatchId);
+      setMatchId(propMatchId.trim());
     }
   }, [propMatchId]);
 

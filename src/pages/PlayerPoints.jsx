@@ -3,10 +3,11 @@ import "./PlayerPoints.css";
 import API_BASE_URL from "../config/api";
 
 function PlayerPoints({ matchId: propMatchId, token }) {
-  const [matchId, setMatchId] = useState(propMatchId || "");
+  const [matchId, setMatchId] = useState(propMatchId?.trim() || "");
   const [pointsData, setPointsData] = useState(null);
   const [previewData, setPreviewData] = useState(null); // NEW: Preview data
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(""); // NEW: Loading message
   const [error, setError] = useState(null);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [calculating, setCalculating] = useState(false);
@@ -30,7 +31,160 @@ function PlayerPoints({ matchId: propMatchId, token }) {
   useEffect(() => {
     if (propMatchId) {
       setMatchId(propMatchId);
-      fetchMatchPoints(propMatchId);
+
+      // Fully automatic workflow: Calculate → Preview → Display
+      const autoCalculateAndPreview = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+          console.log(
+            "🎯 Starting automatic points calculation and preview..."
+          );
+
+          // STEP 1: Calculate points (force recalculation every time)
+          console.log("📊 Step 1: Calculating points...");
+          setLoadingMessage("📊 Calculating points...");
+
+          const calculateResponse = await fetch(
+            `${API_BASE_URL}/api/player-points/match/${propMatchId}/calculate?force=true`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: token
+                  ? `Bearer ${token}`
+                  : `Bearer ${getToken()}`,
+              },
+            }
+          );
+
+          const calculateData = await calculateResponse.json();
+
+          if (!calculateData.success) {
+            throw new Error(
+              calculateData.message || "Failed to calculate points"
+            );
+          }
+
+          console.log("✅ Points calculated successfully!");
+          setPreviewData(calculateData.data);
+          setWorkflowStep("preview");
+
+          // STEP 2: Load and display preview
+          console.log("📋 Step 2: Loading preview...");
+          setLoadingMessage("📋 Loading preview...");
+
+          const previewResponse = await fetch(
+            `${API_BASE_URL}/api/player-points/match/${propMatchId}/preview`,
+            {
+              headers: token
+                ? { Authorization: `Bearer ${token}` }
+                : { Authorization: `Bearer ${getToken()}` },
+            }
+          );
+
+          const previewDataResponse = await previewResponse.json();
+
+          if (previewDataResponse.success && previewDataResponse.data) {
+            console.log("✅ Preview loaded and displayed automatically!");
+
+            // Process and display preview data
+            const grouped = groupPlayersByTeam(previewDataResponse.data);
+            const allPlayers = previewDataResponse.data || [];
+
+            const getCategory = (p) => {
+              return p.categoryPoints || p.points?.byCategory || p.points || {};
+            };
+
+            // Create top performers lists
+            const overall = [...allPlayers]
+              .filter((p) => (p.totalPoints ?? p.points?.total ?? 0) > 0)
+              .sort(
+                (a, b) =>
+                  (b.totalPoints ?? b.points?.total ?? 0) -
+                  (a.totalPoints ?? a.points?.total ?? 0)
+              )
+              .slice(0, 10);
+
+            const batsman = [...allPlayers]
+              .filter(
+                (p) =>
+                  (getCategory(p).battingPoints ??
+                    getCategory(p).batting ??
+                    0) > 0
+              )
+              .sort((a, b) => {
+                const pa = getCategory(a);
+                const pb = getCategory(b);
+                return (
+                  (pb.battingPoints ?? pb.batting ?? 0) -
+                  (pa.battingPoints ?? pa.batting ?? 0)
+                );
+              })
+              .slice(0, 10);
+
+            const bowler = [...allPlayers]
+              .filter(
+                (p) =>
+                  (getCategory(p).bowlingPoints ??
+                    getCategory(p).bowling ??
+                    0) > 0
+              )
+              .sort((a, b) => {
+                const pa = getCategory(a);
+                const pb = getCategory(b);
+                return (
+                  (pb.bowlingPoints ?? pb.bowling ?? 0) -
+                  (pa.bowlingPoints ?? pa.bowling ?? 0)
+                );
+              })
+              .slice(0, 10);
+
+            const fielder = [...allPlayers]
+              .filter((p) => {
+                const c = getCategory(p);
+                return (
+                  (c.fieldingPoints ?? c.fielding ?? 0) +
+                    (c.wicketKeepingPoints ?? c.wicketKeeping ?? 0) >
+                  0
+                );
+              })
+              .sort((a, b) => {
+                const ca = getCategory(a);
+                const cb = getCategory(b);
+                const va =
+                  (ca.fieldingPoints ?? ca.fielding ?? 0) +
+                  (ca.wicketKeepingPoints ?? ca.wicketKeeping ?? 0);
+                const vb =
+                  (cb.fieldingPoints ?? cb.fielding ?? 0) +
+                  (cb.wicketKeepingPoints ?? cb.wicketKeeping ?? 0);
+                return vb - va;
+              })
+              .slice(0, 10);
+
+            const topPerformers = { overall, batsman, bowler, fielder };
+
+            setPointsData({
+              match: { matchId: propMatchId, status: "preview" },
+              teams: grouped,
+              meta: previewDataResponse.meta,
+              topPerformers,
+            });
+            setPreviewData(previewDataResponse.data);
+            setWorkflowStep("preview");
+            setLoadingMessage(""); // Clear loading message
+          }
+        } catch (err) {
+          console.error("❌ Error in automatic calculation/preview:", err);
+          setError("Failed to calculate and preview points: " + err.message);
+          setLoadingMessage(""); // Clear loading message on error
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      autoCalculateAndPreview();
     }
   }, [propMatchId, token]);
 
@@ -924,52 +1078,74 @@ function PlayerPoints({ matchId: propMatchId, token }) {
               <option value="organizer">Organizer</option>
               <option value="player">Player</option>
             </select>
-            <button
-              onClick={() => fetchMatchPoints()}
-              disabled={!matchId || loading}
-            >
-              {loading ? "Loading..." : "Fetch Points"}
-            </button>
 
-            {/* 3-STEP WORKFLOW BUTTONS */}
-            <button
-              onClick={calculatePoints}
-              disabled={!matchId || calculating}
-              className="calculate-btn"
-              title="STEP 1: Calculate points for playing XI (preview mode)"
-            >
-              {calculating ? "Calculating..." : "1️⃣ Calculate (Preview)"}
-            </button>
+            {/* REMOVED: Fetch Points button - now automatic */}
+            {/* REMOVED: Calculate/Preview buttons - now automatic */}
 
+            {/* Loading indicator or info message */}
+            {loading || loadingMessage ? (
+              <div
+                style={{
+                  padding: "16px 24px",
+                  backgroundColor: "#fef3c7",
+                  borderRadius: "8px",
+                  border: "2px solid #f59e0b",
+                  color: "#92400e",
+                  fontSize: "15px",
+                  fontWeight: "600",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "20px",
+                    height: "20px",
+                    border: "3px solid #f59e0b",
+                    borderTopColor: "transparent",
+                    borderRadius: "50%",
+                    animation: "spin 1s linear infinite",
+                  }}
+                ></div>
+                <span>{loadingMessage || "Loading..."}</span>
+                <style>{`
+                  @keyframes spin {
+                    to { transform: rotate(360deg); }
+                  }
+                `}</style>
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "12px 20px",
+                  backgroundColor: "#e0f2fe",
+                  borderRadius: "8px",
+                  border: "2px solid #0ea5e9",
+                  color: "#0369a1",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                }}
+              >
+                ✨ Points are calculated and displayed automatically!
+              </div>
+            )}
+
+            {/* Push to Stats button - only show when in preview mode */}
             {workflowStep === "preview" && (
-              <>
-                <button
-                  onClick={previewPoints}
-                  disabled={!matchId || loading}
-                  className="preview-btn"
-                  title="STEP 2: Preview calculated points before pushing"
-                  style={{
-                    backgroundColor: "#3b82f6",
-                    color: "white",
-                  }}
-                >
-                  {loading ? "Loading..." : "2️⃣ Preview Points"}
-                </button>
-
-                <button
-                  onClick={pushPoints}
-                  disabled={!matchId || pushing}
-                  className="push-btn"
-                  title="STEP 3: Confirm and push to cumulative stats"
-                  style={{
-                    backgroundColor: "#10b981",
-                    color: "white",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {pushing ? "Pushing..." : "3️⃣ Push to Stats"}
-                </button>
-              </>
+              <button
+                onClick={pushPoints}
+                disabled={!matchId || pushing}
+                className="push-btn"
+                title="STEP 3: Confirm and push to cumulative stats"
+                style={{
+                  backgroundColor: "#10b981",
+                  color: "white",
+                  fontWeight: "bold",
+                }}
+              >
+                {pushing ? "Pushing..." : "3️⃣ Push to Stats"}
+              </button>
             )}
           </div>
         </div>

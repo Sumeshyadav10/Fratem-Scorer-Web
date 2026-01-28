@@ -65,8 +65,8 @@ const MatchSDITable = ({ match }) => {
                 match.SDI >= 70
                   ? "#059669"
                   : match.SDI >= 50
-                  ? "#d97706"
-                  : "#dc2626",
+                    ? "#d97706"
+                    : "#dc2626",
             }}
           >
             {match.SDI}
@@ -195,7 +195,7 @@ const MatchSDITable = ({ match }) => {
               {batting.breakdown?.battingAvg?.score?.toFixed(2) ?? "0.00"}
             </td>
             <td
-              rowSpan="3"
+              rowSpan="5"
               style={{
                 textAlign: "center",
                 fontWeight: 700,
@@ -243,9 +243,7 @@ const MatchSDITable = ({ match }) => {
               {batting.breakdown?.strikeRate?.score?.toFixed(2) ?? "0.00"}
             </td>
           </tr>
-          <tr
-            style={{ background: "white", borderBottom: "1px solid #e2e8f0" }}
-          >
+          <tr style={{ background: "white" }}>
             <td
               style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
             >
@@ -278,6 +276,79 @@ const MatchSDITable = ({ match }) => {
               }}
             >
               {batting.breakdown?.boundaryEfficiency?.score?.toFixed(2) ??
+                "0.00"}
+            </td>
+          </tr>
+          <tr style={{ background: "#f8fafc" }}>
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Consistency Index
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {batting.breakdown?.consistencyIndex?.value ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              10%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#2563eb",
+              }}
+            >
+              {batting.breakdown?.consistencyIndex?.score?.toFixed(2) ?? "0.00"}
+            </td>
+          </tr>
+          <tr
+            style={{ background: "white", borderBottom: "1px solid #e2e8f0" }}
+          >
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Chasing Efficiency
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {batting.breakdown?.chasingEfficiency?.value ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              5%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#2563eb",
+              }}
+            >
+              {batting.breakdown?.chasingEfficiency?.score?.toFixed(2) ??
                 "0.00"}
             </td>
           </tr>
@@ -331,7 +402,7 @@ const MatchSDITable = ({ match }) => {
               {bowling.breakdown?.bowlingAvg?.score?.toFixed(2) ?? "0.00"}
             </td>
             <td
-              rowSpan="4"
+              rowSpan="5"
               style={{
                 textAlign: "center",
                 fontWeight: 700,
@@ -414,9 +485,7 @@ const MatchSDITable = ({ match }) => {
               {bowling.breakdown?.strikeRate?.score?.toFixed(2) ?? "0.00"}
             </td>
           </tr>
-          <tr
-            style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}
-          >
+          <tr style={{ background: "#f8fafc" }}>
             <td
               style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
             >
@@ -449,6 +518,44 @@ const MatchSDITable = ({ match }) => {
               }}
             >
               {bowling.breakdown?.dotBallPercentage?.score?.toFixed(2) ??
+                "0.00"}
+            </td>
+          </tr>
+          <tr
+            style={{ background: "white", borderBottom: "1px solid #e2e8f0" }}
+          >
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Pressure Handling Index
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {bowling.breakdown?.pressureHandlingIndex?.value ?? "0.00e+0"}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              5%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#16a34a",
+              }}
+            >
+              {bowling.breakdown?.pressureHandlingIndex?.score?.toFixed(2) ??
                 "0.00"}
             </td>
           </tr>
@@ -751,7 +858,7 @@ export default function SDI() {
 
     try {
       const res = await fetch(
-        `${API_BASE_URL}/api/player-points/player/${playerId}/sdi`
+        `${API_BASE_URL}/api/player-points/player/${playerId}/sdi`,
       );
       const data = await res.json();
 
@@ -989,7 +1096,7 @@ export default function SDI() {
                 >
                   {result.tournaments.reduce(
                     (sum, t) => sum + (t.matchesPlayed || 0),
-                    0
+                    0,
                   )}
                 </div>
               </div>
@@ -1024,13 +1131,13 @@ export default function SDI() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {result.tournaments.map((tournament, tIdx) => {
               const isExpanded = expandedTournaments.has(
-                tournament.tournamentId
+                tournament.tournamentId,
               );
               const tournamentAvgSDI = tournament.matchWiseBreakdown
                 ? (
                     tournament.matchWiseBreakdown.reduce(
                       (sum, m) => sum + (m.SDI || 0),
-                      0
+                      0,
                     ) / tournament.matchWiseBreakdown.length
                   ).toFixed(2)
                 : "0.00";
@@ -1276,8 +1383,8 @@ export default function SDI() {
                                       match.SDI >= 70
                                         ? "#059669"
                                         : match.SDI >= 50
-                                        ? "#d97706"
-                                        : "#dc2626",
+                                          ? "#d97706"
+                                          : "#dc2626",
                                   }}
                                 >
                                   {match.SDI}

@@ -10,6 +10,8 @@ import PlayerPoints from "./pages/PlayerPoints";
 import PlayerCumulativeStats from "./pages/PlayerCumulativeStats";
 import SDI from "./pages/SDI";
 import OSI from "./pages/OSI";
+import OSIMatchAnalysis from "./pages/OSIMatchAnalysis";
+import OSILeaderboard from "./pages/OSILeaderboard";
 import CompletedMatchScorecard from "./pages/CompletedMatchScorecard";
 import LineupSelection from "./components/LineupSelection";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -95,6 +97,14 @@ function App() {
           matchId,
         },
       ],
+      "osi-match-analysis": [
+        { label: "Home", view: "entry", icon: "🏠" },
+        { label: "OSI Match Analysis", view: "osi-match-analysis", icon: "📊" },
+      ],
+      "osi-leaderboard": [
+        { label: "Home", view: "entry", icon: "🏠" },
+        { label: "OSI Leaderboard", view: "osi-leaderboard", icon: "🏆" },
+      ],
     };
 
     return paths[view] || [{ label: "Home", view: "entry", icon: "🏠" }];
@@ -119,7 +129,7 @@ function App() {
         `${API_BASE_URL}/api/live-matches/${trimmedMatchId}`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
+        },
       );
       const data = await response.json();
 
@@ -189,7 +199,7 @@ function App() {
         `${API_BASE_URL}/api/live-matches/${matchId}`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
+        },
       );
       const data = await response.json();
 
@@ -243,7 +253,7 @@ function App() {
         `${API_BASE_URL}/api/live-matches/${matchId}`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
+        },
       );
       const data = await response.json();
 
@@ -389,7 +399,7 @@ function App() {
           <>
             {console.log(
               "🔍 App.jsx - Rendering TeamLineup with matchId:",
-              matchId
+              matchId,
             )}
             <TeamLineup
               matchId={matchId}
@@ -447,6 +457,18 @@ function App() {
         {view === "osi" && (
           <ErrorBoundary>
             <OSI />
+          </ErrorBoundary>
+        )}
+
+        {view === "osi-match-analysis" && (
+          <ErrorBoundary>
+            <OSIMatchAnalysis />
+          </ErrorBoundary>
+        )}
+
+        {view === "osi-leaderboard" && (
+          <ErrorBoundary>
+            <OSILeaderboard />
           </ErrorBoundary>
         )}
 

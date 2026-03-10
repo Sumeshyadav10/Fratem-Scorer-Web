@@ -284,6 +284,9 @@ const MatchSDITable = ({ match }) => {
               style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
             >
               Consistency Index
+              <span style={{ fontSize: 10, color: "#94a3b8", marginLeft: 4 }}>
+                (Neutral*)
+              </span>
             </td>
             <td
               style={{
@@ -321,6 +324,9 @@ const MatchSDITable = ({ match }) => {
               style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
             >
               Chasing Efficiency
+              <span style={{ fontSize: 10, color: "#94a3b8", marginLeft: 4 }}>
+                (Neutral*)
+              </span>
             </td>
             <td
               style={{
@@ -815,6 +821,793 @@ const MatchSDITable = ({ match }) => {
           </div>
         </div>
       </div>
+
+      {/* Note about neutral baselines */}
+      <div
+        style={{
+          marginTop: 12,
+          padding: 12,
+          background: "#fef9c3",
+          borderRadius: 8,
+          border: "1px solid #fde047",
+          fontSize: 11,
+          color: "#713f12",
+        }}
+      >
+        <strong>* Neutral Baseline:</strong> CI and CE are set to 50 (neutral)
+        for individual matches.
+        <br />
+        <strong>See tournament-level SDI breakdown above</strong> for actual CI,
+        CE, and PHI values calculated from continuous data across all matches.
+      </div>
+    </div>
+  );
+};
+
+// Tournament-Level SDI Breakdown Component
+// Shows actual CI, CE, PHI calculated from continuous data across all matches
+const TournamentSDIBreakdown = ({ tournament }) => {
+  const batting = tournament.components?.batting || {};
+  const bowling = tournament.components?.bowling || {};
+  const fielding = tournament.components?.fielding || {};
+
+  return (
+    <div
+      style={{
+        padding: "20px",
+        background: "#f8fafc",
+        borderRadius: 8,
+        marginBottom: 16,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 16,
+          fontWeight: 700,
+          color: "#0f172a",
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <span>📊</span>
+        Tournament SDI Breakdown (Continuous Data Analysis)
+      </div>
+
+      <table
+        style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontSize: 13,
+          background: "white",
+          borderRadius: 8,
+          overflow: "hidden",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+        }}
+      >
+        <thead>
+          <tr
+            style={{ background: "#f1f5f9", borderBottom: "2px solid #e2e8f0" }}
+          >
+            <th
+              style={{
+                padding: "10px 12px",
+                textAlign: "left",
+                fontWeight: 600,
+                color: "#1e293b",
+                width: "35%",
+              }}
+            >
+              Metric
+            </th>
+            <th
+              style={{
+                padding: "10px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#1e293b",
+                width: "20%",
+              }}
+            >
+              Value
+            </th>
+            <th
+              style={{
+                padding: "10px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#1e293b",
+                width: "15%",
+              }}
+            >
+              Weightage
+            </th>
+            <th
+              style={{
+                padding: "10px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#1e293b",
+                width: "15%",
+              }}
+            >
+              Score
+            </th>
+            <th
+              style={{
+                padding: "10px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#1e293b",
+                width: "15%",
+              }}
+            >
+              Component
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {/* BATTING SECTION */}
+          <tr style={{ background: "#eff6ff", borderTop: "2px solid #3b82f6" }}>
+            <td
+              colSpan="5"
+              style={{
+                padding: "8px 12px",
+                fontWeight: 700,
+                color: "#1e40af",
+                fontSize: 14,
+              }}
+            >
+              🏏 BATTING METRICS @ 40%
+            </td>
+          </tr>
+          <tr style={{ background: "white" }}>
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Batting Average
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {batting.breakdown?.battingAvg?.value ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              10%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#2563eb",
+              }}
+            >
+              {batting.breakdown?.battingAvg?.score?.toFixed(2) ?? "0.00"}
+            </td>
+            <td
+              rowSpan="5"
+              style={{
+                textAlign: "center",
+                fontWeight: 700,
+                fontSize: 16,
+                color: "#1e40af",
+                verticalAlign: "middle",
+                background: "#eff6ff",
+              }}
+            >
+              {batting.battingScore?.toFixed(2) ?? "0.00"}
+            </td>
+          </tr>
+          <tr style={{ background: "#f8fafc" }}>
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Strike Rate
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {batting.breakdown?.strikeRate?.value ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              10%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#2563eb",
+              }}
+            >
+              {batting.breakdown?.strikeRate?.score?.toFixed(2) ?? "0.00"}
+            </td>
+          </tr>
+          <tr style={{ background: "white" }}>
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Boundary Efficiency
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {batting.breakdown?.boundaryEfficiency?.value?.toFixed(2) ?? 0}%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              5%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#2563eb",
+              }}
+            >
+              {batting.breakdown?.boundaryEfficiency?.score?.toFixed(2) ??
+                "0.00"}
+            </td>
+          </tr>
+          <tr style={{ background: "#f0f9ff", border: "1px solid #bae6fd" }}>
+            <td
+              style={{
+                padding: "8px 12px",
+                paddingLeft: 24,
+                color: "#0c4a6e",
+                fontWeight: 600,
+              }}
+            >
+              ⭐ Consistency Index (CI)
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 700,
+                color: "#0369a1",
+              }}
+            >
+              {batting.breakdown?.consistencyIndex?.value?.toFixed(3) ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              10%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 700,
+                color: "#0284c7",
+              }}
+            >
+              {batting.breakdown?.consistencyIndex?.score?.toFixed(2) ?? "0.00"}
+            </td>
+          </tr>
+          <tr style={{ background: "#f0f9ff", border: "1px solid #bae6fd" }}>
+            <td
+              style={{
+                padding: "8px 12px",
+                paddingLeft: 24,
+                color: "#0c4a6e",
+                fontWeight: 600,
+              }}
+            >
+              ⭐ Chase Efficiency (CE)
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 700,
+                color: "#0369a1",
+              }}
+            >
+              {batting.breakdown?.chasingEfficiency?.value?.toFixed(2) ?? 0}
+              {batting.breakdown?.chaseMatches > 0 && (
+                <span style={{ fontSize: 10, color: "#64748b", marginLeft: 4 }}>
+                  ({batting.breakdown?.chaseMatches} chases)
+                </span>
+              )}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              5%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 700,
+                color: "#0284c7",
+              }}
+            >
+              {batting.breakdown?.chasingEfficiency?.score?.toFixed(2) ??
+                "0.00"}
+            </td>
+          </tr>
+
+          {/* BOWLING SECTION */}
+          <tr style={{ background: "#f0fdf4", borderTop: "2px solid #22c55e" }}>
+            <td
+              colSpan="5"
+              style={{
+                padding: "8px 12px",
+                fontWeight: 700,
+                color: "#15803d",
+                fontSize: 14,
+              }}
+            >
+              ⚡ BOWLING METRICS @ 40%
+            </td>
+          </tr>
+          <tr style={{ background: "white" }}>
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Bowling Average
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {bowling.breakdown?.bowlingAvg?.value?.toFixed(2) ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              10%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#16a34a",
+              }}
+            >
+              {bowling.breakdown?.bowlingAvg?.score?.toFixed(2) ?? "0.00"}
+            </td>
+            <td
+              rowSpan="5"
+              style={{
+                textAlign: "center",
+                fontWeight: 700,
+                fontSize: 16,
+                color: "#15803d",
+                verticalAlign: "middle",
+                background: "#f0fdf4",
+              }}
+            >
+              {bowling.bowlingScore?.toFixed(2) ?? "0.00"}
+            </td>
+          </tr>
+          <tr style={{ background: "#f8fafc" }}>
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Economy Rate
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {bowling.breakdown?.economyRate?.value?.toFixed(2) ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              10%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#16a34a",
+              }}
+            >
+              {bowling.breakdown?.economyRate?.score?.toFixed(2) ?? "0.00"}
+            </td>
+          </tr>
+          <tr style={{ background: "white" }}>
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Strike Rate
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {bowling.breakdown?.strikeRate?.value?.toFixed(2) ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              10%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#16a34a",
+              }}
+            >
+              {bowling.breakdown?.strikeRate?.score?.toFixed(2) ?? "0.00"}
+            </td>
+          </tr>
+          <tr style={{ background: "#f8fafc" }}>
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Dot Ball %
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {bowling.breakdown?.dotBallPercentage?.value?.toFixed(2) ?? 0}%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              5%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#16a34a",
+              }}
+            >
+              {bowling.breakdown?.dotBallPercentage?.score?.toFixed(2) ??
+                "0.00"}
+            </td>
+          </tr>
+          <tr style={{ background: "#ecfdf5", border: "1px solid #a7f3d0" }}>
+            <td
+              style={{
+                padding: "8px 12px",
+                paddingLeft: 24,
+                color: "#065f46",
+                fontWeight: 600,
+              }}
+            >
+              ⭐ Pressure Handling Index (PHI)
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 700,
+                color: "#047857",
+              }}
+            >
+              {bowling.breakdown?.pressureHandlingIndex?.value ?? "0.00e+0"}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              5%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 700,
+                color: "#059669",
+              }}
+            >
+              {bowling.breakdown?.pressureHandlingIndex?.score?.toFixed(2) ??
+                "0.00"}
+            </td>
+          </tr>
+
+          {/* FIELDING SECTION */}
+          <tr style={{ background: "#fef2f2", borderTop: "2px solid #ef4444" }}>
+            <td
+              colSpan="5"
+              style={{
+                padding: "8px 12px",
+                fontWeight: 700,
+                color: "#b91c1c",
+                fontSize: 14,
+              }}
+            >
+              🧤 FIELDING & WICKET-KEEPING @ 20%
+            </td>
+          </tr>
+          <tr style={{ background: "white" }}>
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Catches Efficiency
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {fielding.breakdown?.catchesEfficiency?.value?.toFixed(3) ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              10%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#dc2626",
+              }}
+            >
+              {fielding.breakdown?.catchesEfficiency?.score?.toFixed(2) ??
+                "0.00"}
+            </td>
+            <td
+              rowSpan="3"
+              style={{
+                textAlign: "center",
+                fontWeight: 700,
+                fontSize: 16,
+                color: "#b91c1c",
+                verticalAlign: "middle",
+                background: "#fef2f2",
+              }}
+            >
+              {fielding.fieldingScore?.toFixed(2) ?? "0.00"}
+            </td>
+          </tr>
+          <tr style={{ background: "#f8fafc" }}>
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Run-Out Success Rate
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {fielding.breakdown?.runOutSuccessRate?.value?.toFixed(3) ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              5%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#dc2626",
+              }}
+            >
+              {fielding.breakdown?.runOutSuccessRate?.score?.toFixed(2) ??
+                "0.00"}
+            </td>
+          </tr>
+          <tr
+            style={{ background: "white", borderBottom: "1px solid #e2e8f0" }}
+          >
+            <td
+              style={{ padding: "8px 12px", paddingLeft: 24, color: "#334155" }}
+            >
+              Stumping Accuracy
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              {fielding.breakdown?.stumpingAccuracy?.value?.toFixed(3) ?? 0}
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                color: "#64748b",
+              }}
+            >
+              5%
+            </td>
+            <td
+              style={{
+                padding: "8px 12px",
+                textAlign: "center",
+                fontWeight: 600,
+                color: "#dc2626",
+              }}
+            >
+              {fielding.breakdown?.stumpingAccuracy?.score?.toFixed(2) ??
+                "0.00"}
+            </td>
+          </tr>
+
+          {/* TOTAL SDI */}
+          <tr
+            style={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+            }}
+          >
+            <td
+              colSpan="3"
+              style={{
+                padding: "12px",
+                fontWeight: 700,
+                fontSize: 15,
+                textAlign: "right",
+              }}
+            >
+              🏆 TOURNAMENT SDI SCORE
+            </td>
+            <td
+              style={{
+                padding: "12px",
+                textAlign: "center",
+                fontWeight: 700,
+                fontSize: 15,
+              }}
+            >
+              100%
+            </td>
+            <td
+              style={{
+                padding: "12px",
+                textAlign: "center",
+                fontWeight: 900,
+                fontSize: 20,
+              }}
+            >
+              {tournament.SDI}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Summary Stats */}
+      <div
+        style={{
+          marginTop: 16,
+          padding: 16,
+          background: "white",
+          borderRadius: 8,
+          border: "1px solid #e2e8f0",
+        }}
+      >
+        <div style={{ fontWeight: 600, marginBottom: 8, color: "#0f172a" }}>
+          📈 Continuous Data Summary
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 12,
+            fontSize: 12,
+          }}
+        >
+          <div>
+            <div style={{ color: "#64748b" }}>Total Runs / Outs</div>
+            <div style={{ fontWeight: 600 }}>
+              {batting.breakdown?.totalRuns ?? 0} /{" "}
+              {batting.breakdown?.totalOuts ?? 0}
+            </div>
+          </div>
+          <div>
+            <div style={{ color: "#64748b" }}>Total Wickets / Conceded</div>
+            <div style={{ fontWeight: 600 }}>
+              {bowling.breakdown?.totalWickets ?? 0} /{" "}
+              {bowling.breakdown?.totalRunsConceded ?? 0}
+            </div>
+          </div>
+          <div>
+            <div style={{ color: "#64748b" }}>
+              Total Catches / Run-Outs / Stumpings
+            </div>
+            <div style={{ fontWeight: 600 }}>
+              {fielding.breakdown?.totalCatches ?? 0} /{" "}
+              {fielding.breakdown?.totalRunOuts ?? 0} /{" "}
+              {fielding.breakdown?.totalStumpings ?? 0}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1251,6 +2044,9 @@ export default function SDI() {
                     <div
                       style={{ padding: "16px 24px", background: "#fafbfc" }}
                     >
+                      {/* Tournament-Level SDI Breakdown with CI, CE, PHI */}
+                      <TournamentSDIBreakdown tournament={tournament} />
+
                       <div
                         style={{
                           marginBottom: 12,

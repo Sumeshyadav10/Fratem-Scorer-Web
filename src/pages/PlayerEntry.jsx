@@ -61,7 +61,7 @@ function PlayerEntry({ onCreated, onUserSet }) {
         setMatchId(trimmedMatchId);
         setCreatedMatch(data.data.match);
         setStatus(
-          "Match created directly: " + trimmedMatchId + " - Ready to start!"
+          "Match created directly: " + trimmedMatchId + " - Ready to start!",
         );
         return;
       }
@@ -75,14 +75,14 @@ function PlayerEntry({ onCreated, onUserSet }) {
           method: "POST",
           headers: getAuthHeaders(),
           body: JSON.stringify({ format: "knockout" }),
-        }
+        },
       );
 
       if (!fixtureRes.ok) {
         const fixtureError = await fixtureRes.json();
         throw new Error(
           "Fixture generation failed: " +
-            (fixtureError.message || fixtureRes.status)
+            (fixtureError.message || fixtureRes.status),
         );
       }
 
@@ -499,15 +499,15 @@ function PlayerEntry({ onCreated, onUserSet }) {
               const trimmedValue = e.target.value.trim();
               console.log(
                 "🔍 PlayerEntry.jsx - Setting matchId from input:",
-                trimmedValue
+                trimmedValue,
               );
               console.log(
                 "🔍 PlayerEntry.jsx - Original value:",
-                e.target.value
+                e.target.value,
               );
               console.log(
                 "🔍 PlayerEntry.jsx - Input type:",
-                typeof trimmedValue
+                typeof trimmedValue,
               );
               setMatchId(trimmedValue);
             }}
@@ -526,7 +526,7 @@ function PlayerEntry({ onCreated, onUserSet }) {
             onClick={() => {
               console.log(
                 "🔍 PlayerEntry.jsx - Open button clicked with matchId:",
-                matchId
+                matchId,
               );
               console.log("🔍 PlayerEntry.jsx - matchId type:", typeof matchId);
               onCreated && onCreated(matchId);
@@ -570,6 +570,147 @@ function PlayerEntry({ onCreated, onUserSet }) {
           <p style={{ margin: 0, fontSize: 14, color: "#1e293b" }}>{status}</p>
         </div>
       )}
+
+      {/* Analytics Navigation */}
+      <div
+        style={{
+          background: "white",
+          padding: 24,
+          borderRadius: 12,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          marginBottom: 24,
+        }}
+      >
+        <h4 style={{ margin: "0 0 16px 0", color: "#1e293b", fontSize: 16 }}>
+          📊 Analytics & Reports
+        </h4>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 12,
+          }}
+        >
+          <button
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent("navigate", {
+                  detail: { view: "osi-match-analysis" },
+                }),
+              );
+            }}
+            style={{
+              padding: "12px 16px",
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "transform 0.2s, box-shadow 0.2s",
+              boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)",
+            }}
+            onMouseOver={(e) => {
+              e.target.style.transform = "translateY(-2px)";
+              e.target.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.4)";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = "translateY(0)";
+              e.target.style.boxShadow = "0 2px 8px rgba(102, 126, 234, 0.3)";
+            }}
+          >
+            🏏 OSI Match Analysis
+          </button>
+          <button
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent("navigate", { detail: { view: "osi" } }),
+              );
+            }}
+            style={{
+              padding: "12px 16px",
+              background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+              color: "white",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "transform 0.2s, box-shadow 0.2s",
+              boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
+            }}
+            onMouseOver={(e) => {
+              e.target.style.transform = "translateY(-2px)";
+              e.target.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.4)";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = "translateY(0)";
+              e.target.style.boxShadow = "0 2px 8px rgba(16, 185, 129, 0.3)";
+            }}
+          >
+            📈 OSI Calculator
+          </button>
+          <button
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent("navigate", { detail: { view: "sdi" } }),
+              );
+            }}
+            style={{
+              padding: "12px 16px",
+              background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+              color: "white",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "transform 0.2s, box-shadow 0.2s",
+              boxShadow: "0 2px 8px rgba(245, 158, 11, 0.3)",
+            }}
+            onMouseOver={(e) => {
+              e.target.style.transform = "translateY(-2px)";
+              e.target.style.boxShadow = "0 4px 12px rgba(245, 158, 11, 0.4)";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = "translateY(0)";
+              e.target.style.boxShadow = "0 2px 8px rgba(245, 158, 11, 0.3)";
+            }}
+          >
+            🎯 SDI Calculator
+          </button>
+          <button
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent("navigate", { detail: { view: "cumulative" } }),
+              );
+            }}
+            style={{
+              padding: "12px 16px",
+              background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+              color: "white",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "transform 0.2s, box-shadow 0.2s",
+              boxShadow: "0 2px 8px rgba(139, 92, 246, 0.3)",
+            }}
+            onMouseOver={(e) => {
+              e.target.style.transform = "translateY(-2px)";
+              e.target.style.boxShadow = "0 4px 12px rgba(139, 92, 246, 0.4)";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = "translateY(0)";
+              e.target.style.boxShadow = "0 2px 8px rgba(139, 92, 246, 0.3)";
+            }}
+          >
+            📊 Player Stats
+          </button>
+        </div>
+      </div>
 
       <p
         style={{
